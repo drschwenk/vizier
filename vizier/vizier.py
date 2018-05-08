@@ -1,6 +1,5 @@
 import os
 import copy
-import logging
 import queue
 import xmltodict
 import pickle
@@ -47,7 +46,6 @@ class Vizier:
             balance_response = self.amt.client.get_account_balance()
             return float(balance_response['AvailableBalance'])
         except ClientError as e:
-            print(e)
             raise
 
     def print_balance(self):
@@ -57,7 +55,8 @@ class Vizier:
     @classmethod
     def pickle_this(cls, this, filename='temp', protocol=pickle.HIGHEST_PROTOCOL, timestamp=''):
         if timestamp:
-            timestamp = '_'.join(time.asctime().lower().replace(':', '_').split())
+            timestamp = '_'.join(
+                time.asctime().lower().replace(':', '_').split())
             filename = '_'.join([filename, timestamp])
         if not filename.endswith('.pkl'):
             filename += '.pkl'
@@ -71,7 +70,8 @@ class Vizier:
 
     @classmethod
     def _render_hit_html(cls, template_params, **kwargs):
-        env = jinja2.Environment(loader=jinja2.FileSystemLoader(template_params['template_dir']))
+        env = jinja2.Environment(loader=jinja2.FileSystemLoader(
+            template_params['template_dir']))
         template = env.get_template(template_params['template_file'])
         return template.render(**kwargs)
 
@@ -85,11 +85,13 @@ class Vizier:
 
     def expected_cost(self, data, **kwargs):
         hit_params = kwargs['basic_hit_params']
-        cost = len(data) * float(hit_params['Reward']) * hit_params['MaxAssignments']
+        cost = len(data) * \
+            float(hit_params['Reward']) * hit_params['MaxAssignments']
         cost_plus_fee = cost * 1.2  # account for 20% Amazon fee
         current_balance = self.get_num_balance()
         if cost_plus_fee > current_balance:
-            print(f'Insufficient funds: will cost ${cost_plus_fee:.{2}f} but only ${current_balance:.{2}f} available.')
+            print(
+                f'Insufficient funds: will cost ${cost_plus_fee:.{2}f} but only ${current_balance:.{2}f} available.')
             return False
         else:
             print(f'Batch will cost ${cost_plus_fee:.{2}f}')
@@ -138,14 +140,16 @@ class Vizier:
     def _create_html_hit_params(self, basic_hit_params, template_params, **kwargs):
         """
         creates a HIT for a question with the specified HTML
-        # :param params a dict of the HIT parameters, must contain a "html" parameter
+        # :param params a dict of the HIT parameters, must contain an "html" parameter
         # :return the created HIT object
         """
         hit_params = copy.deepcopy(basic_hit_params)
         frame_height = hit_params.pop('frame_height')
         question_html = self._render_hit_html(template_params, **kwargs)
-        hit_params['Question'] = self._create_question_xml(question_html, frame_height)
-        hit_params['QualificationRequirements'] = self._build_qualifications(self.qualifications['english_speaking'])
+        hit_params['Question'] = self._create_question_xml(
+            question_html, frame_height)
+        hit_params['QualificationRequirements'] = self._build_qualifications(
+            self.qualifications['english_speaking'])
         return hit_params
 
     def _exec_task(self, hits, task):
@@ -167,10 +171,12 @@ class Vizier:
     def create_hit_group(self, data, task_param_generator, **kwargs):
         if not self.expected_cost(data, **kwargs):
             return None
-        hit_params = [self._create_html_hit_params(**kwargs, **task_param_generator(point)) for point in data]
+        hit_params = [self._create_html_hit_params(
+            **kwargs, **task_param_generator(point)) for point in data]
         hits_created = self._exec_task(hit_params, CreateHits)
         submission_type = 'sandbox_' if self.in_sandbox else 'production_'
-        self.pickle_this(hits_created, f'submitted_batch_{submission_type + str(len(hits_created))}', timestamp='append')
+        self.pickle_this(
+            hits_created, f'submitted_batch_{submission_type + str(len(hits_created))}', timestamp='append')
         return hits_created
 
     @classmethod
@@ -179,7 +185,8 @@ class Vizier:
         for hit in assignments:
             for asg in hit['Assignments']:
                 answer_raw = xmltodict.parse(asg['Answer'])
-                answers.append(json.loads(answer_raw['QuestionFormAnswers']['Answer']['FreeText']))
+                answers.append(json.loads(
+                    answer_raw['QuestionFormAnswers']['Answer']['FreeText']))
         return answers
 
     @classmethod
@@ -220,9 +227,10 @@ class Vizier:
         for h in hits:
             if h['HITStatus'] != 'Disposed':
                 try:
-                    self.amt.client.delete_hit(HITId=h['HITId'])
+                    responses.append(self.amt.client.delete_hit(HITId=h['HITId']))
                 except ClientError as e:
                     print(e)
+        return responses
 
     def force_delete_hits(self, hits):
         self.expire_hits(hits)
@@ -232,4 +240,4 @@ class Vizier:
     #     responses = [self.amt.client.update_hit_review_status(HITId=h['HITId'], Revert=False) for h in hits]
 
     # def revert_hits_reviewable(self, hits):
-    # responses = [self.client.update_hit_review_status(HITId=h['HITId'], Revert=True) for h in hits]
+    #      responses = [self.client.update_hit_review_status(HITId=h['HITId'], Revert=True) for h in hits]

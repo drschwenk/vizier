@@ -34,14 +34,7 @@ class MturkClient:
         )
 
     def perform(self, action, **kwargs):
-        """
-        internal helper function for creating a HIT
-        :param params the parameters (required and optional) common to all HITs
-        :param **kwargs any other parameters needed for a specific HIT type
-        :return the created HIT object
-        """
         try:
-            # print(self.client)
             response = action(**kwargs)
             return response
         except ClientError as e:
@@ -64,7 +57,8 @@ class CreateHits(BotoThreadedOperation):
         self.action = getattr(self.amt.client, 'create_hit')
 
     def run(self):
-        responses = [self.amt.perform(self.action, **point) for point in self.batch]
+        responses = [self.amt.perform(self.action, **point)
+                     for point in self.batch]
         # responses = [self.amt.create_hit(**point) for point in self.batch]
         self._queue.put(responses)
 
@@ -136,10 +130,3 @@ class DeleteHits(BotoThreadedOperation):
                 except ClientError as e:
                     print(e)
         return responses
-
-
-
-
-
-
-
