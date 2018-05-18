@@ -30,7 +30,7 @@ class Vizier:
         self.kwargs = kwargs
         self.amt = MturkClient(**self.kwargs)
         self.n_threads = kwargs['n_threads']
-        self.in_sandbox = kwargs['in_sandbox']
+        self.in_production = kwargs['in_production']
         self.s3_base_path = kwargs['s3_base_path']
         self.turk_data_schemas = {
             'html': 'http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/2011-11-11/HTMLQuestion.xsd'
@@ -102,7 +102,7 @@ class Vizier:
     def _build_qualifications(self, locales=None):
         if locales:
             locales = [{'Country': loc} for loc in locales]
-        masters_id = '2ARFPLSP75KLA8M8DH1HTEQVJT3SY6' if self.in_sandbox else '2F1QJWKUDD8XADTFD2Q0G6UTO95ALH'
+        masters_id = '2F1QJWKUDD8XADTFD2Q0G6UTO95ALH' if self.in_production else '2ARFPLSP75KLA8M8DH1HTEQVJT3SY6'
         master = {
             'QualificationTypeId': masters_id,
             'Comparator': 'EqualTo',
@@ -177,7 +177,7 @@ class Vizier:
         hit_params = [self._create_html_hit_params(
             **kwargs, **task_param_generator(point)) for point in data]
         hits_created = self._exec_task(hit_params, CreateHits)
-        submission_type = 'sandbox_' if self.in_sandbox else 'production_'
+        submission_type = 'production_' if self.in_production else 'sandbox_'
         self.pickle_this(
             hits_created, f'submitted_batch_{submission_type + str(len(hits_created))}', timestamp='append')
         return hits_created
