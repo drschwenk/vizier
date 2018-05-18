@@ -12,8 +12,10 @@ from botocore.exceptions import ClientError
 from .client_tasks import MturkClient
 from .client_tasks import CreateHits
 from .client_tasks import GetAssignments
-from .client_tasks import ExpireHits
 from .client_tasks import ApproveAssignments
+from .client_tasks import UpdateHITsReviewStatus
+from .client_tasks import ExpireHits
+from .client_tasks import DeleteHits
 
 
 class Vizier:
@@ -152,12 +154,13 @@ class Vizier:
             self.qualifications['english_speaking'])
         return hit_params
 
-    def _exec_task(self, hits, task):
+    def _exec_task(self, hits, task, **kwargs):
         hit_batches = [hits[i::self.n_threads] for i in range(self.n_threads)]
         threads = []
         res_queue = queue.Queue()
+        combined_args = {**kwargs, **self.kwargs}
         for batch in hit_batches:
-            t = task(batch, res_queue, **self.kwargs)
+            t = task(batch, res_queue, **combined_args)
             threads.append(t)
         for thread in threads:
             thread.start()
@@ -223,21 +226,15 @@ class Vizier:
         return self._exec_task(hits, ExpireHits)
 
     def delete_hits(self, hits):
-        responses = []
-        for h in hits:
-            if h['HITStatus'] != 'Disposed':
-                try:
-                    responses.append(self.amt.client.delete_hit(HITId=h['HITId']))
-                except ClientError as e:
-                    print(e)
-        return responses
+        return self._exec_task(hits, DeleteHits)
 
     def force_delete_hits(self, hits):
-        self.expire_hits(hits)
-        self.delete_hits(hits)
+        responses = self.expire_hits(hits)
+        responses += self.delete_hits(hits)
+        return responses
 
-    # def set_hits_reviewing(self, hits):
-    #     responses = [self.amt.client.update_hit_review_status(HITId=h['HITId'], Revert=False) for h in hits]
+    def set_hits_reviewing(self, hits):
+        return self._exec_task(hits, UpdateHITsReviewStatus, revert=False)
 
-    # def revert_hits_reviewable(self, hits):
-    #      responses = [self.client.update_hit_review_status(HITId=h['HITId'], Revert=True) for h in hits]
+    def revert_hits_reviewable(self, hits):
+        return self._exec_task(hits, UpdateHITsReviewStatus, revert=True)

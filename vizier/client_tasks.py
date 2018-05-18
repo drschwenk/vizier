@@ -33,13 +33,13 @@ class MturkClient:
             aws_secret_access_key=kwargs['aws_secret_access_key']
         )
 
-    def perform(self, action, **kwargs):
+    @classmethod
+    def perform(cls, action, **kwargs):
         try:
             response = action(**kwargs)
             return response
         except ClientError as e:
-            print(e)
-            return None
+            raise
 
 
 class BotoThreadedOperation(threading.Thread):
@@ -104,22 +104,37 @@ class ApproveAssignments(BotoThreadedOperation):
         self._queue.put(responses)
 
 
+class UpdateHITsReviewStatus(BotoThreadedOperation):
+    def __init__(self, hits, target_queue, **kwargs):
+        super().__init__(**kwargs)
+        self.hits = hits
+        self.revert = kwargs['revert']
+        self._queue = target_queue
+
+    def run(self):
+        responses = [self.amt.client.update_hit_review_status(HITId=h['HITId'], revert=self.revert)
+                     for h in self.hits]
+        self._queue.put(responses)
+
+
 class ExpireHits(BotoThreadedOperation):
-    def __init__(self, hits, **kwargs):
+    def __init__(self, hits, target_queue, **kwargs):
         super().__init__(**kwargs)
         self.hits = hits
         self.exp_date = datetime.datetime(2001, 1, 1)
+        self._queue = target_queue
 
     def run(self):
         responses = [self.amt.client.update_expiration_for_hit(HITId=h['HITId'], ExpireAt=self.exp_date)
                      for h in self.hits]
-        return responses
+        self._queue.put(responses)
 
 
 class DeleteHits(BotoThreadedOperation):
-    def __init__(self, hits, **kwargs):
+    def __init__(self, hits, target_queue, **kwargs):
         super().__init__(**kwargs)
         self.hits = hits
+        self._queue = target_queue
 
     def run(self):
         responses = []
@@ -129,4 +144,6 @@ class DeleteHits(BotoThreadedOperation):
                     self.amt.client.delete_hit(HITId=h['HITId'])
                 except ClientError as e:
                     print(e)
-        return responses
+        self._queue.put(responses)
+
+
