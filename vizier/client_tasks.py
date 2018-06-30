@@ -6,9 +6,9 @@ from botocore.exceptions import ClientError
 
 class MturkClient:
     def __init__(self, **kwargs):
-        self.in_sandbox = kwargs['in_sandbox']
+        self.in_production = kwargs['in_production']
         environments = {
-            "live": {
+            "production": {
                 "endpoint": "https://mturk-requester.us-east-1.amazonaws.com",
                 "preview": "https://www.mturk.com/mturk/preview",
                 "manage": "https://requester.mturk.com/mturk/manageHITs",
@@ -22,7 +22,7 @@ class MturkClient:
             },
         }
 
-        self.mturk_environment = environments['live'] if not kwargs['in_sandbox'] else environments['sandbox']
+        self.mturk_environment = environments['production'] if kwargs['in_production'] else environments['sandbox']
 
         session = boto3.Session(profile_name=kwargs['profile_name'])
         self.client = session.client(
@@ -54,12 +54,12 @@ class CreateHits(BotoThreadedOperation):
         super().__init__(**kwargs)
         self.batch = batch
         self._queue = target_queue
-        self.action = getattr(self.amt.client, 'create_hit')
+        # self.action = getattr(self.amt.client, 'create_hit')
 
     def run(self):
-        responses = [self.amt.perform(self.action, **point)
-                     for point in self.batch]
-        # responses = [self.amt.create_hit(**point) for point in self.batch]
+        # responses = [self.amt.perform(self.action, **point)
+        #              for point in self.batch]
+        responses = [self.amt.client.create_hit(**point) for point in self.batch]
         self._queue.put(responses)
 
 
@@ -112,7 +112,7 @@ class UpdateHITsReviewStatus(BotoThreadedOperation):
         self._queue = target_queue
 
     def run(self):
-        responses = [self.amt.client.update_hit_review_status(HITId=h['HITId'], revert=self.revert)
+        responses = [self.amt.client.update_hit_review_status(HITId=h['HITId'], Revert=self.revert)
                      for h in self.hits]
         self._queue.put(responses)
 

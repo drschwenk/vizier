@@ -55,7 +55,15 @@ class Vizier:
         print(f'Account balance is: ${balance:.{2}f}')
 
     @classmethod
-    def pickle_this(cls, this, filename='temp', protocol=pickle.HIGHEST_PROTOCOL, timestamp=''):
+    def pickle_this(cls, this, filename='temp', protocol=pickle.HIGHEST_PROTOCOL, timestamp=False):
+        """
+        Util function to pickle objects, with the option of appending a timestamp
+        :param this: object to pickle
+        :param filename: filename of pickle object
+        :param protocol: pickle protocol to use
+        :param timestamp: option to append timestamp to filename
+        :return:
+        """
         if timestamp:
             timestamp = '_'.join(
                 time.asctime().lower().replace(':', '_').split())
@@ -67,6 +75,11 @@ class Vizier:
 
     @classmethod
     def unpickle_this(cls, filename):
+        """
+        Util function to unpickle objects
+        :param filename: pickle file path
+        :return: unpickled object
+        """
         with open(filename, 'rb') as f:
             return pickle.load(f)
 
@@ -86,6 +99,12 @@ class Vizier:
             f.write(hit_html)
 
     def expected_cost(self, data, **kwargs):
+        """
+        Computes the expected cost of a hit batch
+        :param data: task data
+        :param kwargs:
+        :return: cost if sufficient funds, false if not
+        """
         hit_params = kwargs['basic_hit_params']
         cost = len(data) * \
             float(hit_params['Reward']) * hit_params['MaxAssignments']
@@ -100,6 +119,11 @@ class Vizier:
             return cost_plus_fee
 
     def _build_qualifications(self, locales=None):
+        """
+        builds qualifications for task
+        :param locales: AMT country codes allowed to perform task
+        :return: list of qualification dicts
+        """
         if locales:
             locales = [{'Country': loc} for loc in locales]
         masters_id = '2F1QJWKUDD8XADTFD2Q0G6UTO95ALH' if self.in_production else '2ARFPLSP75KLA8M8DH1HTEQVJT3SY6'
@@ -120,9 +144,22 @@ class Vizier:
             'LocaleValues': locales,
             'RequiredToPreview': True,
         }
-        return [high_accept_rate, location_based]
+        iconary = {
+            'QualificationTypeId': '3Z1HL5WC7LSXUFW49BUXR7ZP1IDH6M',
+            'Comparator': 'EqualTo',
+            'RequiredToPreview': True,
+            'IntegerValues': [1]
+        }
+        return [high_accept_rate, location_based, iconary]
 
     def _create_question_xml(self, html_question, frame_height, turk_schema='html'):
+        """
+        Embeds question HTML in AMT HTMLQuestion XML
+        :param html_question: task html
+        :param frame_height: height of mturk iframe
+        :param turk_schema: schema type
+        :return:
+        """
         hit_xml = f"""\
             <HTMLQuestion xmlns="{self.turk_data_schemas[turk_schema]}">
                 <HTMLContent><![CDATA[
@@ -155,6 +192,13 @@ class Vizier:
         return hit_params
 
     def _exec_task(self, hits, task, **kwargs):
+        """
+        Executes task on hits over multiple threads
+        :param hits: hits to perform task on
+        :param task: vizier task function
+        :param kwargs:
+        :return: AMT client responses
+        """
         hit_batches = [hits[i::self.n_threads] for i in range(self.n_threads)]
         threads = []
         res_queue = queue.Queue()
@@ -172,6 +216,13 @@ class Vizier:
         return [item for sl in result_list for item in sl]
 
     def create_hit_group(self, data, task_param_generator, **kwargs):
+        """
+        Creates a group of HITs from data and supplied generator and pickles resultant hits
+        :param data: task data
+        :param task_param_generator: user-defined function to generate task parameters
+        :param kwargs:
+        :return: hit objects created
+        """
         if not self.expected_cost(data, **kwargs):
             return None
         hit_params = [self._create_html_hit_params(
@@ -184,6 +235,11 @@ class Vizier:
 
     @classmethod
     def _get_answers(cls, assignments):
+        """
+        Extracts turker answers from assignments
+        :param assignments: list of amt assignment objects
+        :return: turker responses
+        """
         answers = []
         for hit in assignments:
             for asg in hit['Assignments']:
@@ -194,23 +250,57 @@ class Vizier:
 
     @classmethod
     def _extract_responses(cls, answers):
+        """
+        Extracts responses from answers
+        :param answers: answers extracted from AMT assignments
+        :return: dict of task results keyed on their globalID
+        """
         results = defaultdict(list)
         for ans in answers:
             results[ans['globalID']].append(ans['results'])
         return dict(results)
 
     def get_assignments(self, hits=()):
+        """
+        Retrieved assignments associated with hits
+        :param hits: list of AMT hits
+        :return: dict of AMT assignments
+        """
         return self._exec_task(hits, GetAssignments)
 
     def get_and_extract_results(self, hits=()):
+        """
+        Retrieves AMT assignments and extracts turker responses
+        :param hits: list of AMT hits
+        :return: dict of task results keyed on their globalID
+        """
         assignments = self.get_assignments(hits)
         answers = self._get_answers(assignments)
         return self._extract_responses(answers)
 
     def approve_assignments(self, assignments):
+        """
+        Approves assignments
+        :param assignments: list of assignments to improve
+        :return: AMT client responses
+        """
+        return self._exec_task(assignments, ApproveAssignments)
+
+    def approve_hits(self, hits):
+        """
+        Approves all assignments associated with hits
+        :param hits : list of hits to improve
+        :return: AMT client responses
+        """
+        assignments = self.get_assignments(hits)
         return self._exec_task(assignments, ApproveAssignments)
 
     def get_all_hits(self):
+        """
+        Retrieves all of the current users HITs.
+        This can be slow if a user has accumulated many thousands of HITs
+        :return: all user HITs
+        """
         paginator = self.amt.client.get_paginator('list_hits')
         response_iterator = paginator.paginate(
             PaginationConfig={
@@ -223,18 +313,110 @@ class Vizier:
         return response
 
     def expire_hits(self, hits):
+        """
+        Sets hit expiration to a date in the past
+        :param hits: hits to expire
+        :return: AMT client responses
+        """
         return self._exec_task(hits, ExpireHits)
 
     def delete_hits(self, hits):
+        """
+        Deletes (permanently removes) hits
+        :param hits: hits to delete
+        :return: AMT client responses
+        """
         return self._exec_task(hits, DeleteHits)
 
-    def force_delete_hits(self, hits):
-        responses = self.expire_hits(hits)
-        responses += self.delete_hits(hits)
-        return responses
+    def force_delete_hits(self, hits, force=False):
+        """
+        Deletes (permanently removes) hits by first expiring them
+        :param hits: hits to delete
+        :param force: flag to overcome production warning
+        :return: AMT client responses
+        """
+        if not force and self.in_production:
+            print('Careful with this in production. Override with force=True')
+            return
+        response = self.expire_hits(hits)
+        response += self.delete_hits(hits)
+        return response
 
     def set_hits_reviewing(self, hits):
+        """
+        Sets hit status to reviewing
+        :param hits: hits to set status of
+        :return: AMT client responses
+        """
         return self._exec_task(hits, UpdateHITsReviewStatus, revert=False)
 
     def revert_hits_reviewable(self, hits):
+        """
+        Reverts hit reviewing status
+        :param hits: hits to revert
+        :return: AMT client responses
+        """
         return self._exec_task(hits, UpdateHITsReviewStatus, revert=True)
+
+    def create_qualification(self, **kwargs):
+        """
+        Creates a new task qualification ID
+        :param kwargs: name, keywords, description, status, etc.
+        :return: qualification ID string
+        """
+        return self.amt.client.create_qualification_type(**kwargs)
+
+    def grant_qualification_to_workers(self, qualification_id, worker_ids, notify=True):
+        """
+        Grants qualification to workers
+        :param qualification_id: qualification ID
+        :param worker_ids: list of worker IDs
+        :param notify: send notification email to workers
+        :return:
+        """
+        responses = []
+        for w_id in worker_ids:
+            responses.append(self.amt.client.associate_qualification_with_worker(
+                QualificationTypeId=qualification_id,
+                WorkerId=w_id,
+                IntegerValue=1,
+                SendNotification=notify
+            ))
+        return responses
+
+    def remove_qualification_from_workers(self, qualification_id, worker_ids, reason=''):
+        """
+        Revokes a worker's qualification
+        :param qualification_id: qualification ID
+        :param worker_ids: list of worker IDs
+        :param reason: reason for disqualification to give workers
+        :return:
+        """
+        responses = []
+        for w_id in worker_ids:
+            responses.append(self.amt.client.disassociate_qualification_with_worker(
+                QualificationTypeId=qualification_id,
+                WorkerId=w_id,
+                Reason=reason
+            ))
+        return responses
+
+    def message_workers(self, worker_ids, subject, message):
+        """
+        Messages a list of workers with a supplied message.
+        :param worker_ids: list of worker IDs to message
+        :param subject: subject to display in message
+        :param message:
+        :return: AMT client responses
+        """
+        batch_length = 100      # this is the maximum number of workers AMT allows in one notification
+        n_batches = len(worker_ids) // batch_length + bool(len(worker_ids) % batch_length)
+        worker_batches = [worker_ids[i::n_batches] for i in range(n_batches)]
+        response = []
+        for workers in worker_batches:
+            response.append(self.amt.client.notify_workers(
+                Subject=subject,
+                MessageText=message,
+                WorkerIds=workers))
+        return response
+
