@@ -54,11 +54,8 @@ class CreateHits(BotoThreadedOperation):
         super().__init__(**kwargs)
         self.batch = batch
         self._queue = target_queue
-        # self.action = getattr(self.amt.client, 'create_hit')
 
     def run(self):
-        # responses = [self.amt.perform(self.action, **point)
-        #              for point in self.batch]
         responses = [self.amt.client.create_hit(**point) for point in self.batch]
         self._queue.put(responses)
 

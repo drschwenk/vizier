@@ -230,7 +230,7 @@ class Vizier:
         hits_created = self._exec_task(hit_params, CreateHits)
         submission_type = 'production_' if self.in_production else 'sandbox_'
         self.pickle_this(
-            hits_created, f'submitted_batch_{submission_type + str(len(hits_created))}', timestamp='append')
+            hits_created, f'submitted_batch_{submission_type + str(len(hits_created))}', timestamp=True)
         return hits_created
 
     @classmethod
