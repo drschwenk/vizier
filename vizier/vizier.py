@@ -101,14 +101,19 @@ class Vizier:
     def expected_cost(self, data, **kwargs):
         """
         Computes the expected cost of a hit batch
+        To adjust for subtleties of the amt fees, see:
+        www.mturk.com/pricing
         :param data: task data
         :param kwargs:
         :return: cost if sufficient funds, false if not
         """
         hit_params = kwargs['basic_hit_params']
-        cost = len(data) * \
-            float(hit_params['Reward']) * hit_params['MaxAssignments']
-        cost_plus_fee = cost * 1.2  # account for 20% Amazon fee
+        base_cost = float(hit_params['Reward'])
+        n_assignments_per_hit = hit_params['MaxAssignments']
+        min_fee_per_assignment = 0.01
+        fee_percentage = 0.2 if n_assignments_per_hit < 10 else 0.4
+        fee_per_assignment = max(fee_percentage * base_cost, min_fee_per_assignment) + base_cost
+        cost_plus_fee = round(n_assignments_per_hit * fee_per_assignment * len(data), 2)
         current_balance = self.get_num_balance()
         if cost_plus_fee > current_balance:
             print(
@@ -147,7 +152,7 @@ class Vizier:
         iconary = {
             'QualificationTypeId': '3Z1HL5WC7LSXUFW49BUXR7ZP1IDH6M',
             'Comparator': 'EqualTo',
-            'RequiredToPreview': True,
+            'ActionsGuarded': 'DiscoverPreviewAndAccept',
             'IntegerValues': [1]
         }
         return [high_accept_rate, location_based, iconary]
@@ -193,8 +198,8 @@ class Vizier:
 
     def _exec_task(self, hits, task, **kwargs):
         """
-        Executes task on hits over multiple threads
-        :param hits: hits to perform task on
+        Executes task on _batch over multiple threads
+        :param hits: _batch to perform task on
         :param task: vizier task function
         :param kwargs:
         :return: AMT client responses
@@ -217,7 +222,7 @@ class Vizier:
 
     def create_hit_group(self, data, task_param_generator, **kwargs):
         """
-        Creates a group of HITs from data and supplied generator and pickles resultant hits
+        Creates a group of HITs from data and supplied generator and pickles resultant _batch
         :param data: task data
         :param task_param_generator: user-defined function to generate task parameters
         :param kwargs:
@@ -262,8 +267,8 @@ class Vizier:
 
     def get_assignments(self, hits=()):
         """
-        Retrieved assignments associated with hits
-        :param hits: list of AMT hits
+        Retrieved assignments associated with _batch
+        :param hits: list of AMT _batch
         :return: dict of AMT assignments
         """
         return self._exec_task(hits, GetAssignments)
@@ -271,7 +276,7 @@ class Vizier:
     def get_and_extract_results(self, hits=()):
         """
         Retrieves AMT assignments and extracts turker responses
-        :param hits: list of AMT hits
+        :param hits: list of AMT _batch
         :return: dict of task results keyed on their globalID
         """
         assignments = self.get_assignments(hits)
@@ -288,8 +293,8 @@ class Vizier:
 
     def approve_hits(self, hits):
         """
-        Approves all assignments associated with hits
-        :param hits : list of hits to improve
+        Approves all assignments associated with _batch
+        :param hits : list of _batch to improve
         :return: AMT client responses
         """
         assignments = self.get_assignments(hits)
@@ -315,23 +320,23 @@ class Vizier:
     def expire_hits(self, hits):
         """
         Sets hit expiration to a date in the past
-        :param hits: hits to expire
+        :param hits: _batch to expire
         :return: AMT client responses
         """
         return self._exec_task(hits, ExpireHits)
 
     def delete_hits(self, hits):
         """
-        Deletes (permanently removes) hits
-        :param hits: hits to delete
+        Deletes (permanently removes) _batch
+        :param hits: _batch to delete
         :return: AMT client responses
         """
         return self._exec_task(hits, DeleteHits)
 
     def force_delete_hits(self, hits, force=False):
         """
-        Deletes (permanently removes) hits by first expiring them
-        :param hits: hits to delete
+        Deletes (permanently removes) _batch by first expiring them
+        :param hits: _batch to delete
         :param force: flag to overcome production warning
         :return: AMT client responses
         """
@@ -345,7 +350,7 @@ class Vizier:
     def set_hits_reviewing(self, hits):
         """
         Sets hit status to reviewing
-        :param hits: hits to set status of
+        :param hits: _batch to set status of
         :return: AMT client responses
         """
         return self._exec_task(hits, UpdateHITsReviewStatus, revert=False)
@@ -353,7 +358,7 @@ class Vizier:
     def revert_hits_reviewable(self, hits):
         """
         Reverts hit reviewing status
-        :param hits: hits to revert
+        :param hits: _batch to revert
         :return: AMT client responses
         """
         return self._exec_task(hits, UpdateHITsReviewStatus, revert=True)
@@ -410,7 +415,8 @@ class Vizier:
         :return: AMT client responses
         """
         batch_length = 100      # this is the maximum number of workers AMT allows in one notification
-        n_batches = len(worker_ids) // batch_length + bool(len(worker_ids) % batch_length)
+        n_batches = len(worker_ids) // batch_length + \
+            bool(len(worker_ids) % batch_length)
         worker_batches = [worker_ids[i::n_batches] for i in range(n_batches)]
         response = []
         for workers in worker_batches:
@@ -419,4 +425,3 @@ class Vizier:
                 MessageText=message,
                 WorkerIds=workers))
         return response
-

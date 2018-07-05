@@ -1,6 +1,7 @@
 import boto3
 import threading
 import datetime
+import abc
 from botocore.exceptions import ClientError
 
 
@@ -21,16 +22,11 @@ class MturkClient:
                 "reward": "0.01"
             },
         }
-
         self.mturk_environment = environments['production'] if kwargs['in_production'] else environments['sandbox']
-
         session = boto3.Session(profile_name=kwargs['profile_name'])
         self.client = session.client(
             service_name='mturk',
-            region_name='us-east-1',
-            endpoint_url=self.mturk_environment['endpoint'],
-            aws_access_key_id=kwargs['aws_access_key_id'],
-            aws_secret_access_key=kwargs['aws_secret_access_key']
+            endpoint_url=self.mturk_environment['endpoint']
         )
 
     @classmethod
@@ -43,104 +39,97 @@ class MturkClient:
 
 
 class BotoThreadedOperation(threading.Thread):
-
-    def __init__(self, **kwargs):
+    def __init__(self, batch, target_queue, **kwargs):
         self.amt = MturkClient(**kwargs)
+        self._batch = batch
+        self._queue = target_queue
         super().__init__()
+
+    @abc.abstractmethod
+    def run(self):
+        responses = []
+        self._queue.put(responses)
 
 
 class CreateHits(BotoThreadedOperation):
     def __init__(self, batch, target_queue, **kwargs):
-        super().__init__(**kwargs)
-        self.batch = batch
-        self._queue = target_queue
+        super().__init__(batch, target_queue, **kwargs)
+        self.action = getattr(self.amt.client, 'create_hit')
 
     def run(self):
-        responses = [self.amt.client.create_hit(**point) for point in self.batch]
+        responses = [self.amt.perform(self.action, **point)
+                     for point in self._batch]
         self._queue.put(responses)
 
 
 class GetAssignments(BotoThreadedOperation):
     def __init__(self, batch, target_queue, **kwargs):
-        super().__init__(**kwargs)
-        self.batch = batch
-        self._queue = target_queue
+        super().__init__(batch, target_queue, **kwargs)
+        self.action = getattr(self.amt.client, 'list_assignments_for_hit')
 
     def run(self):
         assignments = []
-        for hit in self.batch:
-            assignments.append(self.amt.client.list_assignments_for_hit(
-                HITId=hit['HITId'],
-                AssignmentStatuses=['Submitted', 'Approved'],
-                MaxResults=10)
-            )
+        for hit in self._batch:
+            action_args = {
+                'HITId': hit['HITId'],
+                'AssignmentStatuses': ['Submitted', 'Approved'],
+                'MaxResults': 50
+            }
+            assignments.append(self.amt.perform(self.action, **action_args))
         self._queue.put(assignments)
 
 
 class ApproveAssignments(BotoThreadedOperation):
     def __init__(self, batch, target_queue, **kwargs):
-        super().__init__(**kwargs)
-        self.batch = batch
-        self._queue = target_queue
+        super().__init__(batch, target_queue, **kwargs)
+        self.action = getattr(self.amt.client, 'approve_assignment')
 
     def run(self):
         responses = []
-        for hit in self.batch:
-            for assignment in hit['Assignments']:
-                if assignment['AssignmentStatus'] == 'Submitted':
-                    assignment_id = assignment['AssignmentId']
-                    try:
-                        responses.append(self.amt.client.approve_assignment(
-                            AssignmentId=assignment_id,
-                            RequesterFeedback='good',
-                            OverrideRejection=False,
-                        ))
-                    except ClientError:
-                        print(f'approve failed: {assignment_id}')
-
+        for hit in self._batch:
+            submitted_assignments = [
+                a for a in hit['Assignments'] if a['AssignmentStatus'] == 'Submitted']
+            for assignment in submitted_assignments:
+                action_args = {
+                    'AssignmentId': assignment['AssignmentId'],
+                    'RequesterFeedback': 'good',
+                    'OverrideRejection': False
+                }
+                responses.append(self.amt.perform(self.action, **action_args))
         self._queue.put(responses)
 
 
 class UpdateHITsReviewStatus(BotoThreadedOperation):
-    def __init__(self, hits, target_queue, **kwargs):
-        super().__init__(**kwargs)
-        self.hits = hits
+    def __init__(self, batch, target_queue, **kwargs):
+        super().__init__(batch, target_queue, **kwargs)
         self.revert = kwargs['revert']
-        self._queue = target_queue
+        self.action = getattr(self.amt.client, 'update_hit_review_status')
 
     def run(self):
-        responses = [self.amt.client.update_hit_review_status(HITId=h['HITId'], Revert=self.revert)
-                     for h in self.hits]
+        responses = [self.amt.perform(
+            self.action, HITId=h['HITId'], Revert=self.revert) for h in self._batch]
         self._queue.put(responses)
 
 
 class ExpireHits(BotoThreadedOperation):
-    def __init__(self, hits, target_queue, **kwargs):
-        super().__init__(**kwargs)
-        self.hits = hits
+    def __init__(self, batch, target_queue, **kwargs):
+        super().__init__(batch, target_queue, **kwargs)
+        self.action = getattr(self.amt.client, 'update_expiration_for_hit')
         self.exp_date = datetime.datetime(2001, 1, 1)
-        self._queue = target_queue
 
     def run(self):
-        responses = [self.amt.client.update_expiration_for_hit(HITId=h['HITId'], ExpireAt=self.exp_date)
-                     for h in self.hits]
+        responses = [self.amt.perform(
+            self.action, HITId=h['HITId'], ExpireAt=self.exp_date) for h in self._batch]
         self._queue.put(responses)
 
 
 class DeleteHits(BotoThreadedOperation):
-    def __init__(self, hits, target_queue, **kwargs):
-        super().__init__(**kwargs)
-        self.hits = hits
-        self._queue = target_queue
+    def __init__(self, batch, target_queue, **kwargs):
+        super().__init__(batch, target_queue, **kwargs)
+        self.action = getattr(self.amt.client, 'delete_hit')
 
     def run(self):
-        responses = []
-        for h in self.hits:
-            if h['HITStatus'] != 'Disposed':
-                try:
-                    self.amt.client.delete_hit(HITId=h['HITId'])
-                except ClientError as e:
-                    print(e)
+        disposed_hits = [h for h in self._batch if h['HITStatus'] != 'Disposed']
+        responses = [self.amt.client.perform(
+            self.action, HITId=h['HITId']) for h in disposed_hits]
         self._queue.put(responses)
-
-
