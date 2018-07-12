@@ -425,3 +425,17 @@ class Vizier:
                 MessageText=message,
                 WorkerIds=workers))
         return response
+
+    def send_bonuses(self, worker_bonus_assignments, amount, reason):
+        responses = []
+        for worker_id, assignments in worker_bonus_assignments.items():
+            for a_id in assignments:
+                responses.append(self.amt.client.send_bonus(
+                    WorkerId=worker_id,
+                    BonusAmount=str(amount),
+                    AssignmentId=a_id,
+                    Reason=reason,
+                    # UniqueRequestToken='string'
+                ))
+        return responses
+
