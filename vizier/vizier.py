@@ -37,6 +37,7 @@ class Vizier:
         }
         self.qualifications = {
             'high_accept_rate': 95,
+            'min_total_hits_approved': 1000,
             'english_speaking': ['US', 'CA', 'AU', 'NZ', 'GB'],
             'us_only': ['US'],
             'master': 'False'
@@ -141,6 +142,12 @@ class Vizier:
             'QualificationTypeId': '000000000000000000L0',
             'Comparator': 'GreaterThanOrEqualTo',
             'IntegerValues': [self.qualifications['high_accept_rate']],
+            'RequiredToPreview': True,
+        }
+        min_total_hits_approved = {
+            'QualificationTypeId': '00000000000000000040',
+            'Comparator': 'GreaterThanOrEqualTo',
+            'IntegerValues': [self.qualifications['min_total_hits_approved']],
             'RequiredToPreview': True,
         }
         location_based = {
