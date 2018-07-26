@@ -37,6 +37,7 @@ class Vizier:
         }
         self.qualifications = {
             'high_accept_rate': 95,
+            'min_total_hits_approved': 1000,
             'english_speaking': ['US', 'CA', 'AU', 'NZ', 'GB'],
             'us_only': ['US'],
             'master': 'False'
@@ -143,6 +144,12 @@ class Vizier:
             'IntegerValues': [self.qualifications['high_accept_rate']],
             'RequiredToPreview': True,
         }
+        min_total_hits_approved = {
+            'QualificationTypeId': '00000000000000000040',
+            'Comparator': 'GreaterThanOrEqualTo',
+            'IntegerValues': [self.qualifications['min_total_hits_approved']],
+            'RequiredToPreview': True,
+        }
         location_based = {
             'QualificationTypeId': '00000000000000000071',
             'Comparator': 'In',
@@ -155,7 +162,7 @@ class Vizier:
             'ActionsGuarded': 'DiscoverPreviewAndAccept',
             'IntegerValues': [1]
         }
-        return [high_accept_rate, location_based, iconary]
+        return [high_accept_rate, location_based]
 
     def _create_question_xml(self, html_question, frame_height, turk_schema='html'):
         """
