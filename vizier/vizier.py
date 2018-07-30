@@ -162,7 +162,13 @@ class Vizier:
             'ActionsGuarded': 'DiscoverPreviewAndAccept',
             'IntegerValues': [1]
         }
-        return [high_accept_rate, location_based]
+        iconary_2 = {
+            'QualificationTypeId': '3L4WKCMPYDW5XOAL3OFNEQCBWU222H',
+            'Comparator': 'DoesNotExist',
+            'ActionsGuarded': 'DiscoverPreviewAndAccept',
+            # 'IntegerValues': [1]
+        }
+        return [high_accept_rate, location_based, iconary_2]
 
     def _create_question_xml(self, html_question, frame_height, turk_schema='html'):
         """
