@@ -31,7 +31,6 @@ class Vizier:
         self.amt = MturkClient(**self.kwargs)
         self.n_threads = kwargs['n_threads']
         self.in_production = kwargs['in_production']
-        self.s3_base_path = kwargs['s3_base_path']
         self.turk_data_schemas = {
             'html': 'http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/2011-11-11/HTMLQuestion.xsd'
         }
@@ -164,6 +163,7 @@ class Vizier:
         }
         iconary_2 = {
             'QualificationTypeId': '3L4WKCMPYDW5XOAL3OFNEQCBWU222H',
+            # 'Comparator': 'EqualTo',
             'Comparator': 'DoesNotExist',
             'ActionsGuarded': 'DiscoverPreviewAndAccept',
             # 'IntegerValues': [1]
@@ -262,8 +262,11 @@ class Vizier:
         for hit in assignments:
             for asg in hit['Assignments']:
                 answer_raw = xmltodict.parse(asg['Answer'])
-                answers.append(json.loads(
-                    answer_raw['QuestionFormAnswers']['Answer']['FreeText']))
+                if answer_raw['QuestionFormAnswers']['Answer']['FreeText']:
+                    answers.append(json.loads(
+                        answer_raw['QuestionFormAnswers']['Answer']['FreeText']))
+                else:
+                    answers.append([])
         return answers
 
     @classmethod
@@ -333,7 +336,7 @@ class Vizier:
     def expire_hits(self, hits):
         """
         Sets hit expiration to a date in the past
-        :param hits: _batch to expire
+        :param hits: hit batch to expire
         :return: AMT client responses
         """
         return self._exec_task(hits, ExpireHits)

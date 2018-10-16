@@ -2,6 +2,8 @@ import boto3
 import threading
 import datetime
 import abc
+from botocore.client import Config
+
 from botocore.exceptions import ClientError
 
 
@@ -22,11 +24,13 @@ class MturkClient:
                 "reward": "0.01"
             },
         }
+        # config = Config(connect_timeout=300, read_timeout=300)
         self.mturk_environment = environments['production'] if kwargs['in_production'] else environments['sandbox']
         session = boto3.Session(profile_name=kwargs['profile_name'])
         self.client = session.client(
             service_name='mturk',
-            endpoint_url=self.mturk_environment['endpoint']
+            endpoint_url=self.mturk_environment['endpoint'],
+            # config=config
         )
 
     @classmethod
