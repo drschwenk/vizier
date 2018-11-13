@@ -66,6 +66,21 @@ class CreateHits(BotoThreadedOperation):
         self._queue.put(responses)
 
 
+class GetHITs(BotoThreadedOperation):
+    def __init__(self, batch, target_queue, **kwargs):
+        super().__init__(batch, target_queue, **kwargs)
+        self.action = getattr(self.amt.client, 'get_hit')
+
+    def run(self):
+        hits = []
+        for hit in self._batch:
+            action_args = {
+                'HITId': hit['HITId'],
+            }
+            hits.append(self.amt.perform(self.action, **action_args))
+        self._queue.put(hits)
+
+
 class GetAssignments(BotoThreadedOperation):
     def __init__(self, batch, target_queue, **kwargs):
         super().__init__(batch, target_queue, **kwargs)

@@ -11,6 +11,7 @@ from botocore.exceptions import ClientError
 
 from .client_tasks import MturkClient
 from .client_tasks import CreateHits
+from .client_tasks import GetHITs
 from .client_tasks import GetAssignments
 from .client_tasks import ApproveAssignments
 from .client_tasks import UpdateHITsReviewStatus
@@ -163,10 +164,14 @@ class Vizier:
         }
         iconary_2 = {
             'QualificationTypeId': '3L4WKCMPYDW5XOAL3OFNEQCBWU222H',
-            # 'Comparator': 'EqualTo',
+            'Comparator': 'EqualTo',
+            'ActionsGuarded': 'DiscoverPreviewAndAccept',
+            'IntegerValues': [1]
+        }
+        iconary_2_qual = {
+            'QualificationTypeId': '3L4WKCMPYDW5XOAL3OFNEQCBWU222H',
             'Comparator': 'DoesNotExist',
             'ActionsGuarded': 'DiscoverPreviewAndAccept',
-            # 'IntegerValues': [1]
         }
         return [high_accept_rate, location_based, iconary_2]
 
@@ -378,6 +383,17 @@ class Vizier:
         :return: AMT client responses
         """
         return self._exec_task(hits, UpdateHITsReviewStatus, revert=True)
+
+    def get_updated_hits(self, hits):
+        return self._exec_task(hits, GetHITs, revert=True)
+
+    def get_assignable_hits(self, hits):
+        hit_statuses = self.get_hit_statuses(hits)
+        return [h for h in hit_statuses if h == 'Assignable']
+
+    def get_hit_statuses(self, hits):
+        updated_hits = self.get_updated_hits(hits)
+        return [h['HIT']['HITStatus'] for h in updated_hits]
 
     def create_qualification(self, **kwargs):
         """
