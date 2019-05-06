@@ -252,8 +252,12 @@ class Vizier:
             **kwargs, **task_param_generator(point)) for point in data]
         hits_created = self._exec_task(hit_params, CreateHits)
         submission_type = 'production_' if self.in_production else 'sandbox_'
-        self.pickle_this(
-            hits_created, f'submitted_batch_{submission_type + str(len(hits_created))}', timestamp=True)
+
+        if 'hit_filename' in kwargs:
+            self.pickle_this(hits_created, filename=kwargs['hit_filename'], timestamp=False)
+        else:
+            self.pickle_this(
+                hits_created, f'submitted_batch_{submission_type + str(len(hits_created))}', timestamp=True)
         return hits_created
 
     @classmethod
@@ -458,9 +462,10 @@ class Vizier:
                 WorkerIds=workers))
         return response
 
-    def send_bonuses(self, worker_bonus_assignments, amount, reason):
+    def send_bonuses(self, worker_bonus_assignments, amounts, reason):
         responses = []
         for worker_id, assignments in worker_bonus_assignments.items():
+            amount = amounts[worker_id]
             for a_id in assignments:
                 responses.append(self.amt.client.send_bonus(
                     WorkerId=worker_id,

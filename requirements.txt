@@ -1,4 +1,5 @@
-botocore==1.9.20
-boto3==1.6.20
-Jinja2==2.10
-xmltodict==0.11.0
+botocore>1.9.20
+boto3>1.6.20
+Jinja2>2.10
+xmltodict>0.11.0
+
