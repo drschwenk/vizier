@@ -1,10 +1,38 @@
-import boto3
+"""
+Various boto wrappers
+"""
+import queue
 import threading
 import datetime
 import abc
-from botocore.client import Config
-
+import boto3
+# from botocore.client import Config
 from botocore.exceptions import ClientError
+
+
+def perform_amt_action(action):
+    def parallelize_action(*args):
+        client_config = args[-1]['amt_client_params']
+        n_threads = client_config['n_threads']
+
+        action_name, hit_batch = action(*args)
+        Action = globals().get(action_name)
+
+        hit_batches = [hit_batch[i::n_threads] for i in range(n_threads)]
+        threads = []
+        res_queue = queue.Queue()
+        for batch in hit_batches:
+            thread = Action(batch, res_queue, **client_config)
+            threads.append(thread)
+        for thread in threads:
+            thread.start()
+        for thread in threads:
+            thread.join()
+        result_list = []
+        while not res_queue.empty():
+            result_list.append(res_queue.get())
+        return [item for sl in result_list for item in sl]
+    return parallelize_action
 
 
 class MturkClient:
@@ -25,7 +53,8 @@ class MturkClient:
             },
         }
         # config = Config(connect_timeout=300, read_timeout=300)
-        self.mturk_environment = environments['production'] if kwargs['in_production'] else environments['sandbox']
+        self.mturk_environment = environments['production'] \
+            if kwargs['in_production'] else environments['sandbox']
         session = boto3.Session(profile_name=kwargs['profile_name'])
         self.client = session.client(
             service_name='mturk',
@@ -38,8 +67,12 @@ class MturkClient:
         try:
             response = action(**kwargs)
             return response
-        except ClientError as e:
+        except ClientError as err:
+            print(err)
             raise
+
+    def direct_amt_client(self):
+        return self.client
 
 
 class BotoThreadedOperation(threading.Thread):
