@@ -1,11 +1,11 @@
 import os
 import copy
 import queue
-import xmltodict
 import pickle
 import json
 import time
 import jinja2
+import xmltodict
 from collections import defaultdict
 from botocore.exceptions import ClientError
 
@@ -48,7 +48,8 @@ class Vizier:
         try:
             balance_response = self.amt.client.get_account_balance()
             return float(balance_response['AvailableBalance'])
-        except ClientError as e:
+        except ClientError as err:
+            print(err)
             raise
 
     def print_balance(self):
@@ -71,18 +72,18 @@ class Vizier:
             filename = '_'.join([filename, timestamp])
         if not filename.endswith('.pkl'):
             filename += '.pkl'
-        with open(filename, 'wb') as f:
-            pickle.dump(this, f, protocol=protocol)
+        with open(filename, 'wb') as file:
+            pickle.dump(this, file, protocol=protocol)
 
     @classmethod
     def unpickle_this(cls, filename):
         """
         Util function to unpickle objects
         :param filename: pickle file path
-        :return: unpickled object
+        :return: un-pickled object
         """
-        with open(filename, 'rb') as f:
-            return pickle.load(f)
+        with open(filename, 'rb') as file:
+            return pickle.load(file)
 
     @classmethod
     def _render_hit_html(cls, template_params, **kwargs):
@@ -96,8 +97,8 @@ class Vizier:
         html_out_file = os.path.join(html_dir, page_name)
         if not os.path.exists(html_dir):
             os.makedirs(html_dir)
-        with open(html_out_file, 'w') as f:
-            f.write(hit_html)
+        with open(html_out_file, 'w') as file:
+            file.write(hit_html)
 
     def expected_cost(self, data, **kwargs):
         """
@@ -120,9 +121,8 @@ class Vizier:
             print(
                 f'Insufficient funds: will cost ${cost_plus_fee:.{2}f} but only ${current_balance:.{2}f} available.')
             return False
-        else:
-            print(f'Batch will cost ${cost_plus_fee:.{2}f}')
-            return cost_plus_fee
+        print(f'Batch will cost ${cost_plus_fee:.{2}f}')
+        return cost_plus_fee
 
     def _build_qualifications(self, locales=None):
         """
@@ -195,8 +195,8 @@ class Vizier:
         try:
             xmltodict.parse(hit_xml)
             return hit_xml
-        except xmltodict.expat.ExpatError as e:
-            print(e)
+        except xmltodict.expat.ExpatError as err:
+            print(err)
             raise
 
     def _create_html_hit_params(self, basic_hit_params, template_params, **kwargs):
@@ -216,7 +216,7 @@ class Vizier:
 
     def _exec_task(self, hits, task, **kwargs):
         """
-        Executes task on _batch over multiple threads
+        Executes task on a hit batch over multiple threads
         :param hits: _batch to perform task on
         :param task: vizier task function
         :param kwargs:
@@ -227,8 +227,8 @@ class Vizier:
         res_queue = queue.Queue()
         combined_args = {**kwargs, **self.kwargs}
         for batch in hit_batches:
-            t = task(batch, res_queue, **combined_args)
-            threads.append(t)
+            thread = task(batch, res_queue, **combined_args)
+            threads.append(thread)
         for thread in threads:
             thread.start()
         for thread in threads:
@@ -338,8 +338,8 @@ class Vizier:
             }
         )
         response = []
-        for r in response_iterator:
-            response.extend(r['HITs'])
+        for resp in response_iterator:
+            response.extend(resp['HITs'])
         return response
 
     def expire_hits(self, hits):
@@ -360,14 +360,13 @@ class Vizier:
 
     def force_delete_hits(self, hits, force=False):
         """
-        Deletes (permanently removes) _batch by first expiring them
-        :param hits: _batch to delete
+        Deletes (permanently removes) hit batch by first expiring them
+        :param hits: batch batch to delete
         :param force: flag to overcome production warning
         :return: AMT client responses
         """
         if not force and self.in_production:
             print('Careful with this in production. Override with force=True')
-            return
         response = self.expire_hits(hits)
         response += self.delete_hits(hits)
         return response
@@ -475,4 +474,3 @@ class Vizier:
                     # UniqueRequestToken='string'
                 ))
         return responses
-

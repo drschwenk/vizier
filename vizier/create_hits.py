@@ -1,15 +1,9 @@
 import os
 import copy
-import queue
-import pickle
-import time
 import jinja2
 import xmltodict
-from botocore.exceptions import ClientError
 
-from .client_tasks import CreateHits
-# from .client_tasks import exec_task
-from .client_tasks import perform_amt_action
+from .client_tasks import amt_multi_action
 from .serialize import serialize
 from .serialize import deserialize
 from .qualifications import build_qualifications
@@ -20,7 +14,7 @@ turk_data_schemas = {
     }
 
 
-@perform_amt_action
+@amt_multi_action
 def create_hit_group(data, task_param_generator, task_configs):
     """
     Creates a group of HITs from data and supplied generator and pickles resultant _batch

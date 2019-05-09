@@ -3,14 +3,17 @@ Various boto wrappers
 """
 import queue
 import threading
-import datetime
 import abc
 import boto3
-# from botocore.client import Config
 from botocore.exceptions import ClientError
+# from botocore.client import Config
+
+available_actions = {
+    'CreateHits': ''
+}
 
 
-def perform_amt_action(action):
+def amt_multi_action(action):
     def parallelize_action(*args):
         client_config = args[-1]['amt_client_params']
         n_threads = client_config['n_threads']
@@ -33,6 +36,16 @@ def perform_amt_action(action):
             result_list.append(res_queue.get())
         return [item for sl in result_list for item in sl]
     return parallelize_action
+
+
+def amt_single_action(action):
+    def single_action(*args):
+        client_config = args[-1]['amt_client_params']
+        amt_client = MturkClient(**client_config).direct_amt_client()
+        action_name, request_batch = action(*args)
+        client_action = getattr(amt_client, action_name)
+        return [client_action(req) for req in request_batch]
+    return single_action
 
 
 class MturkClient:
@@ -165,6 +178,7 @@ class UpdateHITsReviewStatus(BotoThreadedOperation):
 
 class ExpireHits(BotoThreadedOperation):
     def __init__(self, batch, target_queue, **kwargs):
+        import datetime
         super().__init__(batch, target_queue, **kwargs)
         self.action = getattr(self.amt.client, 'update_expiration_for_hit')
         self.exp_date = datetime.datetime(2001, 1, 1)
