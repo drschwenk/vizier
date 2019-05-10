@@ -1,7 +1,7 @@
-from .client_tasks import amt_single_action
+from .client_tasks import amt_serial_action
 
 
-@amt_single_action
+@amt_serial_action
 def create_qualification(qualification, task_configs):
     """
     Creates a new task qualification ID. The format of the qualification should follow:
@@ -23,7 +23,7 @@ def create_qualification(qualification, task_configs):
     return 'create_qualification_type', [qualification]
 
 
-@amt_single_action
+@amt_serial_action
 def grant_qualification_to_workers(qualification_id, worker_ids, notify=True):
     """
     Grants qualification to workers
@@ -43,7 +43,7 @@ def grant_qualification_to_workers(qualification_id, worker_ids, notify=True):
     return 'associate_qualification_with_worker', requests
 
 
-@amt_single_action
+@amt_serial_action
 def remove_qualification_from_workers(qualification_id, worker_ids, reason=''):
     """
     Revokes a worker's qualification
@@ -62,7 +62,7 @@ def remove_qualification_from_workers(qualification_id, worker_ids, reason=''):
     return 'disassociate_qualification_with_worker', requests
 
 
-@amt_single_action
+@amt_serial_action
 def message_workers(worker_ids, subject, message, task_configs):
     """
     Messages a list of workers with a supplied message.
@@ -86,7 +86,7 @@ def message_workers(worker_ids, subject, message, task_configs):
     return 'notify_workers', requests
 
 
-@amt_single_action
+@amt_serial_action
 def send_bonuses(worker_bonus_assignments, amounts, reason, task_configs):
     requests = []
     for worker_id, assignments in worker_bonus_assignments.items():

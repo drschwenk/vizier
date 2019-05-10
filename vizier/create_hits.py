@@ -4,13 +4,15 @@ import jinja2
 import xmltodict
 
 from .client_tasks import amt_multi_action
+from .client_tasks import amt_serial_action
 from .serialize import serialize
 from .serialize import deserialize
 from .qualifications import build_qualifications
 
 
+turk_data_scheme_base = 'http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/'
 turk_data_schemas = {
-    'html': 'http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/2011-11-11/HTMLQuestion.xsd'
+    'html': ''.join([turk_data_scheme_base, '2011-11-11/HTMLQuestion.xsd'])
     }
 
 
@@ -28,12 +30,28 @@ def create_hit_group(data, task_param_generator, task_configs):
     return 'CreateHits', hit_batch
 
 
-def preview_hit_interface(template_params, html_dir='./interface_preview', page_name='task.html', **kwargs):
-    hit_html = _render_hit_html(template_params, **kwargs)
-    html_out_file = os.path.join(html_dir, page_name)
-    if not os.path.exists(html_dir):
-        os.makedirs(html_dir)
-    with open(html_out_file, 'w') as file:
+@amt_serial_action
+def create_single_hit(data_point, task_param_generator, task_configs):
+    """
+    Creates a group of HITs from data and supplied generator and pickles resultant _batch
+    :param data_point: task data
+    :param task_param_generator: user-defined function to generate task parameters
+    :param task_configs: task configuration
+    :return: hit objects created
+    """
+    single_hit = [_create_html_hit_params(task_configs, **task_param_generator(data_point))]
+    return 'create_hit', single_hit
+
+
+def preview_hit_interface(data_point, task_param_generator, task_configs):
+    interface_params = task_configs['interface_params']
+    preview_dir = task_configs['interface_params']['preview_dir']
+    preview_filename = ''.join([task_configs['experiment_params']['experiment_name'], '.html'])
+    preview_out_file = os.path.join(preview_dir, preview_filename)
+    hit_html = _render_hit_html(interface_params, **task_param_generator(data_point))
+    if not os.path.exists(preview_dir):
+        os.makedirs(preview_dir)
+    with open(preview_out_file, 'w') as file:
         file.write(hit_html)
 
 
@@ -53,7 +71,7 @@ def expected_cost(data, **kwargs):
     fee_percentage = 0.2 if n_assignments_per_hit < 10 else 0.4
     fee_per_assignment = max(fee_percentage * base_cost, min_fee_per_assignment) + base_cost
     cost_plus_fee = round(n_assignments_per_hit * fee_per_assignment * len(data), 2)
-    # current_balance = self.get_num_balance()
+    # current_balance = self.get_numerical_balance()
     current_balance = 1000
     if cost_plus_fee > current_balance:
         print(
