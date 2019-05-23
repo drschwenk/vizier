@@ -4,7 +4,7 @@ import jinja2
 import xmltodict
 
 from .client_tasks import amt_multi_action
-from .client_tasks import amt_serial_action
+from .client_tasks import amt_single_action
 from .serialize import serialize
 from .serialize import deserialize
 from .qualifications import build_qualifications
@@ -26,11 +26,11 @@ def create_hit_group(data, task_param_generator, task_configs):
     :return: hit objects created
     """
     hit_batch = [_create_html_hit_params(
-        task_configs, **task_param_generator(point)) for point in data]
+        task_configs, **task_param_generator(point, task_configs)) for point in data]
     return 'CreateHits', hit_batch
 
 
-@amt_serial_action
+@amt_single_action
 def create_single_hit(data_point, task_param_generator, task_configs):
     """
     Creates a group of HITs from data and supplied generator and pickles resultant _batch
@@ -39,7 +39,7 @@ def create_single_hit(data_point, task_param_generator, task_configs):
     :param task_configs: task configuration
     :return: hit objects created
     """
-    single_hit = [_create_html_hit_params(task_configs, **task_param_generator(data_point))]
+    single_hit = _create_html_hit_params(task_configs, **task_param_generator(data_point, task_configs))
     return 'create_hit', single_hit
 
 
@@ -48,7 +48,7 @@ def preview_hit_interface(data_point, task_param_generator, task_configs):
     preview_dir = task_configs['interface_params']['preview_dir']
     preview_filename = ''.join([task_configs['experiment_params']['experiment_name'], '.html'])
     preview_out_file = os.path.join(preview_dir, preview_filename)
-    hit_html = _render_hit_html(interface_params, **task_param_generator(data_point))
+    hit_html = _render_hit_html(interface_params, **task_param_generator(data_point, task_configs))
     if not os.path.exists(preview_dir):
         os.makedirs(preview_dir)
     with open(preview_out_file, 'w') as file:
@@ -88,6 +88,8 @@ def _create_html_hit_params(task_config, **kwargs):
     # :return the created HIT object
     """
     basic_hit_params = task_config.get('hit_params', None)
+    client_params = task_config.get('amt_client_params', None)
+    in_production = client_params['in_production']
     interface_params = task_config.get('interface_params', None)
     qualification_params = task_config.get('qualifications')
     hit_params = copy.deepcopy(basic_hit_params)
@@ -95,7 +97,7 @@ def _create_html_hit_params(task_config, **kwargs):
     question_html = _render_hit_html(interface_params, **kwargs)
     hit_params['Question'] = _create_question_xml(
         question_html, frame_height)
-    hit_params['QualificationRequirements'] = build_qualifications(qualification_params, **kwargs)
+    hit_params['QualificationRequirements'] = build_qualifications(qualification_params, in_production)
     return hit_params
 
 

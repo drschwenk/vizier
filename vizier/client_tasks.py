@@ -44,8 +44,8 @@ def amt_serial_action(action):
         amt_client = MturkClient(**client_config).direct_amt_client()
         action_name, request_batch = action(*args)
         client_action = getattr(amt_client, action_name)
-        print(request_batch)
-        return [client_action(req) for req in request_batch]
+        print(request_batch[0])
+        return [client_action(**req) for req in request_batch]
     return single_action
 
 
@@ -55,9 +55,10 @@ def amt_single_action(action):
         amt_client = MturkClient(**client_config).direct_amt_client()
         action_name, client_action_args = action(*args)
         client_action = getattr(amt_client, action_name)
+        print(client_action_args)
         if not client_action_args:
             return client_action()
-        return client_action(client_action_args)
+        return client_action(**client_action_args)
     return single_action
 
 

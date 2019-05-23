@@ -2,16 +2,28 @@ from collections import defaultdict
 import json
 import xmltodict
 from .client_tasks import amt_multi_action
+from .utils import surface_hit_data
 
 
 @amt_multi_action
-def get_assignments(hits, task_configs):
+@surface_hit_data
+def get_grouped_assignments(hits, task_configs):
     """
     Retrieved assignments associated with _batch
     :param hits: list of AMT _batch
     :return: dict of AMT assignments
     """
     return 'GetAssignments', hits
+
+
+def get_assignments(hits, task_configs):
+    grouped_assignments = get_grouped_assignments(hits)
+    assignments = [asg for hit in grouped_assignments for asg in hit.get('Assignments', [])]
+    return [asg for asg in assignments if asg]
+
+
+def get_assignment_metadata(assignments):
+    pass
 
 
 def get_and_extract_results(hits, task_configs):
@@ -26,7 +38,7 @@ def get_and_extract_results(hits, task_configs):
 
 
 @amt_multi_action
-def approve_assignments(assignments):
+def approve_assignments(assignments, task_configs):
     """
     Approves assignments
     :param assignments: list of assignments to improve
@@ -52,14 +64,13 @@ def _get_answers(assignments):
     :return: turker responses
     """
     answers = []
-    for hit in assignments:
-        for asg in hit['Assignments']:
-            answer_raw = xmltodict.parse(asg['Answer'])
-            answer_text = answer_raw['QuestionFormAnswers']['Answer']['FreeText']
-            if answer_text:
-                answers.append(json.loads(answer_text))
-            else:
-                answers.append([])
+    for asg in assignments:
+        raw_answer = xmltodict.parse(asg['Answer'])
+        answer_text = raw_answer['QuestionFormAnswers']['Answer']['FreeText']
+        if answer_text:
+            answers.append(json.loads(answer_text))
+        else:
+            answers.append([])
     return answers
 
 
@@ -105,6 +116,7 @@ def expire_hits(hits):
 
 
 @amt_multi_action
+@surface_hit_data
 def delete_hits(hits):
     """
     Deletes (permanently removes) _batch
@@ -130,6 +142,7 @@ def force_delete_hits(hits, task_configs, force=False):
 
 
 @amt_multi_action
+@surface_hit_data
 def set_hits_reviewing(hits):
     """
     Sets hit status to reviewing
@@ -140,6 +153,7 @@ def set_hits_reviewing(hits):
 
 
 @amt_multi_action
+@surface_hit_data
 def revert_hits_reviewable(hits):
     """
     Reverts hit reviewing status
@@ -149,16 +163,20 @@ def revert_hits_reviewable(hits):
     return 'UpdateHITsReviewStatus', hits#,  revert=True)
 
 
+@surface_hit_data
 def get_assignable_hits(hits):
     hit_statuses = get_hit_statuses(hits)
     return [h for h in hit_statuses if h == 'Assignable']
 
 
-def get_hit_statuses(hits):
-    updated_hits = get_updated_hits(hits)
-    return [h['HIT']['HITStatus'] for h in updated_hits]
+def get_hit_statuses(hits, task_configs):
+    import pandas as pd
+    updated_hits = get_updated_hits(hits, task_configs)
+    statuses = {h['HIT']['HITId']: h['HIT']['HITStatus'] for h in updated_hits}
+    return pd.Series(statuses)
 
 
 @amt_multi_action
-def get_updated_hits(hits):
-    return 'GetHITs', hits#, revert=True)
+@surface_hit_data
+def get_updated_hits(hits, task_configs):
+    return 'GetHITs', hits

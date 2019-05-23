@@ -1,7 +1,8 @@
 from .client_tasks import amt_serial_action
+from .client_tasks import amt_single_action
 
 
-@amt_serial_action
+@amt_single_action
 def create_qualification(qualification, task_configs):
     """
     Creates a new task qualification ID. The format of the qualification should follow:
@@ -20,11 +21,11 @@ def create_qualification(qualification, task_configs):
     :param qualification: name, keywords, description, status, etc.
     :return: qualification ID string
     """
-    return 'create_qualification_type', [qualification]
+    return 'create_qualification_type', qualification
 
 
 @amt_serial_action
-def grant_qualification_to_workers(qualification_id, worker_ids, notify=True):
+def grant_qualification_to_workers(qualification_id, worker_ids, notify, task_configs):
     """
     Grants qualification to workers
     :param qualification_id: qualification ID

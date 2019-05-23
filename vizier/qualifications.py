@@ -4,14 +4,14 @@ master_qual_ids = {'production': '2F1QJWKUDD8XADTFD2Q0G6UTO95ALH',
 amt_environment = 'sandbox'
 
 
-def build_qualifications(qualifications, **kwargs):
+def build_qualifications(qualifications, in_production):
     """
     builds qualifications for task
     :param qualifications:
     :return: list of qualification dicts
     """
     global amt_environment
-    amt_environment = 'production' if kwargs.get('in_production', False) else 'sandbox'
+    amt_environment = 'production' if in_production else 'sandbox'
     quals = [_qual_builder(qual)(setting) for qual, setting in qualifications.items()]
     return list(filter(None, quals))
 
@@ -27,7 +27,8 @@ def _check_qual_inclusion(qual_builder):
         if isinstance(setting, dict):
             from copy import deepcopy
             setting = deepcopy(setting)
-            if setting.pop('active', '') != amt_environment:
+            is_active = setting.pop('active', '')
+            if is_active != amt_environment:
                 return None
         return qual_builder(setting)
     return inclusion_decorator

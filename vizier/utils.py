@@ -1,6 +1,16 @@
 from .client_tasks import amt_single_action
 
 
+def surface_hit_data(action):
+    def extract_hit_values(*args):
+        action_name, hits = action(*args)
+        if hits and hits[0].get('HIT'):
+            return action_name, [hit['HIT'] for hit in hits]
+        else:
+            return action_name, hits
+    return extract_hit_values
+
+
 @amt_single_action
 def get_account_balance(task_configs):
     return 'get_account_balance', None
@@ -42,3 +52,14 @@ def expected_cost(data, task_configs):
         return False
     print(f'Batch will cost ${cost_plus_fee:.{2}f}')
     return cost_plus_fee
+
+
+def load_config(config_fp):
+    import yaml
+    with open(config_fp, 'r') as stream:
+        try:
+            task_config = yaml.load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+            task_config = None
+    return task_config
