@@ -1,14 +1,20 @@
+import os
+import json
+import gzip
+import time
+import pickle
+from decorator import decorator
 from .client_tasks import amt_single_action
+from .config import configure
 
 
-def surface_hit_data(action):
-    def extract_hit_values(*args):
-        action_name, hits = action(*args)
-        if hits and hits[0].get('HIT'):
-            return action_name, [hit['HIT'] for hit in hits]
-        else:
-            return action_name, hits
-    return extract_hit_values
+@decorator
+def surface_hit_data(action, *args, **kwargs):
+    action_name, hits = action(*args, **kwargs)
+    if hits and hits[0].get('HIT'):
+        return action_name, [hit['HIT'] for hit in hits]
+    else:
+        return action_name, hits
 
 
 @amt_single_action
@@ -63,3 +69,101 @@ def load_config(config_fp):
             print(exc)
             task_config = None
     return task_config
+
+
+def create_directories(directories):
+    for current_dir in directories:
+        os.makedirs(current_dir, exist_ok=True)
+
+
+@decorator
+@configure
+def serialize_action_result(action, *args, **kwargs):
+    configs = kwargs['configuration']
+    available_serializers = {
+        'json': dump_json,
+        'pickle': dump_pickle
+    }
+    output_format = configs['serialization_params']['output_format']
+    serializer = available_serializers.get(output_format, None)
+    res = action(*args, **kwargs)
+    if serializer:
+        output_fp = prepare_output_path(action, configs)
+        serializer(res, output_fp, compress=configs['serialization_params']['compress'])
+
+
+def prepare_output_path(action, configs):
+    output_dir_base = configs['serialization_params']['output_dir_base']
+    experiment = configs['experiment_params']['experiment_name']
+    out_dir = os.path.join(output_dir_base, experiment)
+    os.makedirs(out_dir, exist_ok=True)
+    action_name = action.__name__
+    environment = 'prod' if configs['amt_client_params'] else 'sbox'
+    timestamp = create_timestamp()
+    file_name = '--'.join([environment, action_name, timestamp])
+    output_fp = os.path.join(out_dir, file_name)
+    return output_fp
+
+
+def create_timestamp():
+    _, month, day, clock, year, = time.asctime().lower().split()
+    hour, minute, sec = clock.split(':')
+    timestamp = '_'.join([year, month, day, hour, minute])
+    return timestamp
+
+
+def read(file_name, mode='rb'):
+    with open(file_name, mode) as f:
+        return f.read()
+
+
+def write(file_name, data, mode='wb'):
+    with open(file_name, mode) as f:
+        f.write(data)
+
+
+def write_compressed(file_name, data, compress_level, mode='wb'):
+    write(f'{file_name}.gz', gzip.compress(data, compresslevel=compress_level))
+
+
+def append_file_ext(file_name, file_ext):
+    if not file_name.endswith(file_ext):
+        file_name = '.'.join([file_name, file_ext])
+    return file_name
+
+
+def load_json(file_name, compress):
+    file_name = append_file_ext(file_name, 'json')
+    if compress:
+        return json.loads(gzip.decompress(read(file_name)).decode('utf8'))
+    else:
+        return json.loads(read(file_name, 'r'))
+
+
+def dump_json(dump_object, file_name, compress, indent=4, compress_level=9) :
+    file_name = append_file_ext(file_name, 'json')
+    if compress:
+        data = json.dumps(dump_object, sort_keys=True)
+        write_compressed(file_name, data.encode('utf8'), compress_level)
+    else:
+        data = json.dumps(dump_object, sort_keys=True, indent=indent)
+        write(file_name, data, 'w')
+
+
+def load_pickle(file_name, compress):
+    file_name = append_file_ext(file_name, 'pkl')
+    data = read(file_name)
+    if compress:
+        load_object = pickle.loads(gzip.decompress(data))
+    else:
+        load_object = pickle.loads(data)
+    return load_object
+
+
+def dump_pickle(dump_object, file_name, compress, compress_level=9):
+    file_name = append_file_ext(file_name, 'pkl')
+    data = pickle.dumps(dump_object)
+    if compress:
+        write_compressed(file_name, data, compress_level)
+    else:
+        write(file_name, data)

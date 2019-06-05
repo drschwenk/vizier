@@ -1,3 +1,5 @@
+from decorator import decorator
+
 master_qual_ids = {'production': '2F1QJWKUDD8XADTFD2Q0G6UTO95ALH',
                    'sandbox': '2ARFPLSP75KLA8M8DH1HTEQVJT3SY6'}
 
@@ -20,18 +22,18 @@ def _qual_builder(qualification):
     return globals().get(f'_{qualification}', _custom_qualification)
 
 
-def _check_qual_inclusion(qual_builder):
-    def inclusion_decorator(setting):
-        if not setting or setting == 'false':
+@decorator
+def _check_qual_inclusion(qual_builder, *args, **kwargs):
+    setting = args[0]
+    if not setting or setting == 'false':
+        return None
+    if isinstance(setting, dict):
+        from copy import deepcopy
+        setting = deepcopy(setting)
+        is_active = setting.pop('active', '')
+        if is_active != amt_environment:
             return None
-        if isinstance(setting, dict):
-            from copy import deepcopy
-            setting = deepcopy(setting)
-            is_active = setting.pop('active', '')
-            if is_active != amt_environment:
-                return None
-        return qual_builder(setting)
-    return inclusion_decorator
+    return qual_builder(setting)
 
 
 @_check_qual_inclusion

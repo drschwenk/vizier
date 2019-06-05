@@ -3,11 +3,11 @@ import copy
 import jinja2
 import xmltodict
 
+from .config import configure
+from .utils import serialize_action_result
+from .qualifications import build_qualifications
 from .client_tasks import amt_multi_action
 from .client_tasks import amt_single_action
-from .serialize import serialize
-from .serialize import deserialize
-from .qualifications import build_qualifications
 
 
 turk_data_scheme_base = 'http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/'
@@ -55,16 +55,16 @@ def preview_hit_interface(data_point, task_param_generator, task_configs):
         file.write(hit_html)
 
 
-def expected_cost(data, **kwargs):
+def expected_cost(data, task_config):
     """
     Computes the expected cost of a hit batch
     To adjust for subtleties of the amt fees, see:
     www.mturk.com/pricing
     :param data: task data
-    :param kwargs:
+    :param task_config: task configuration
     :return: cost if sufficient funds, false if not
     """
-    hit_params = kwargs['basic_hit_params']
+    hit_params = task_config['basic_hit_params']
     base_cost = float(hit_params['Reward'])
     n_assignments_per_hit = hit_params['MaxAssignments']
     min_fee_per_assignment = 0.01
@@ -81,12 +81,15 @@ def expected_cost(data, **kwargs):
     return cost_plus_fee
 
 
-def _create_html_hit_params(task_config, **kwargs):
+@serialize_action_result
+@configure
+def _create_html_hit_params(**kwargs):
     """
     creates a HIT for a question with the specified HTML
     # :param params a dict of the HIT parameters, must contain an "html" parameter
     # :return the created HIT object
     """
+    task_config = kwargs['configuration']
     basic_hit_params = task_config.get('hit_params', None)
     client_params = task_config.get('amt_client_params', None)
     in_production = client_params['in_production']

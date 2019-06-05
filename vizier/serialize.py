@@ -2,11 +2,17 @@ import json
 import pickle
 
 
-def serialize(*args, **kwargs):
+def serialize_action_result(action):
+    def serializer(*args):
+        action_name, hits = action(*args)
+    return
+
+
+def serialize_json(*args, task_configs):
     pass
 
 
-def deserialize(*args, **kwargs):
+def deserialize_json(*args, **kwargs):
     pass
 
     # submission_type = 'production_' if self.in_production else 'sandbox_'

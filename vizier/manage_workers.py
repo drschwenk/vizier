@@ -25,7 +25,7 @@ def create_qualification(qualification, task_configs):
 
 
 @amt_serial_action
-def grant_qualification_to_workers(qualification_id, worker_ids, notify, task_configs):
+def grant_qualification_to_workers(qualification_id, worker_ids, notify):
     """
     Grants qualification to workers
     :param qualification_id: qualification ID

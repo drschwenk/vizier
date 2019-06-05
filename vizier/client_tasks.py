@@ -5,6 +5,7 @@ import queue
 import threading
 import abc
 import boto3
+from decorator import decorator
 from botocore.exceptions import ClientError
 # from botocore.client import Config
 
@@ -13,53 +14,49 @@ available_actions = {
 }
 
 
-def amt_multi_action(action):
-    def parallelize_action(*args):
-        client_config = args[-1]['amt_client_params']
-        n_threads = client_config['n_threads']
+@decorator
+def amt_multi_action(action, *args, **kwargs):
+    client_config = kwargs['configuration']['amt_client_params']
+    n_threads = client_config['n_threads']
+    action_name, hit_batch = action(*args, **kwargs)
+    Action = globals().get(action_name)
 
-        action_name, hit_batch = action(*args)
-        Action = globals().get(action_name)
-
-        hit_batches = [hit_batch[i::n_threads] for i in range(n_threads)]
-        threads = []
-        res_queue = queue.Queue()
-        for batch in hit_batches:
-            thread = Action(batch, res_queue, **client_config)
-            threads.append(thread)
-        for thread in threads:
-            thread.start()
-        for thread in threads:
-            thread.join()
-        result_list = []
-        while not res_queue.empty():
-            result_list.append(res_queue.get())
-        return [item for sl in result_list for item in sl]
-    return parallelize_action
+    hit_batches = [hit_batch[i::n_threads] for i in range(n_threads)]
+    threads = []
+    res_queue = queue.Queue()
+    for batch in hit_batches:
+        thread = Action(batch, res_queue, **client_config)
+        threads.append(thread)
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+    result_list = []
+    while not res_queue.empty():
+        result_list.append(res_queue.get())
+    return [item for sl in result_list for item in sl]
 
 
-def amt_serial_action(action):
-    def single_action(*args):
-        client_config = args[-1]['amt_client_params']
-        amt_client = MturkClient(**client_config).direct_amt_client()
-        action_name, request_batch = action(*args)
-        client_action = getattr(amt_client, action_name)
-        print(request_batch[0])
-        return [client_action(**req) for req in request_batch]
-    return single_action
+@decorator
+def amt_serial_action(action, *args, **kwargs):
+    # client_config = args[-1]['amt_client_params']
+    client_config = kwargs['configuration']['amt_client_params']
+    amt_client = MturkClient(**client_config).direct_amt_client()
+    action_name, request_batch = action(*args, **kwargs)
+    client_action = getattr(amt_client, action_name)
+    return [client_action(**req) for req in request_batch]
 
 
-def amt_single_action(action):
-    def single_action(*args):
-        client_config = args[-1]['amt_client_params']
-        amt_client = MturkClient(**client_config).direct_amt_client()
-        action_name, client_action_args = action(*args)
-        client_action = getattr(amt_client, action_name)
-        print(client_action_args)
-        if not client_action_args:
-            return client_action()
-        return client_action(**client_action_args)
-    return single_action
+@decorator
+def amt_single_action(action, *args, **kwargs):
+    # client_config = args[-1]['amt_client_params']
+    client_config = kwargs['configuration']['amt_client_params']
+    amt_client = MturkClient(**client_config).direct_amt_client()
+    action_name, client_action_args = action(*args, **kwargs)
+    client_action = getattr(amt_client, action_name)
+    if not client_action_args:
+        return client_action()
+    return client_action(**client_action_args)
 
 
 class MturkClient:
