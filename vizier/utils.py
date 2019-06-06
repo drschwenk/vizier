@@ -18,21 +18,35 @@ def surface_hit_data(action, *args, **kwargs):
 
 
 @amt_single_action
-def get_account_balance(task_configs):
+def get_account_balance():
     return 'get_account_balance', None
 
 
-def get_numerical_balance(task_configs):
-    balance_response = get_account_balance(task_configs)
+@configure
+def get_numerical_balance():
+    balance_response = get_account_balance()
     return float(balance_response['AvailableBalance'])
 
 
-def print_balance(task_configs):
-    balance = get_numerical_balance(task_configs)
+def print_balance():
+    balance = get_numerical_balance()
     print(f'Account balance is: ${balance:.{2}f}')
 
 
-def expected_cost(data, task_configs):
+@configure
+def recall_template_args(**kwargs):
+    import re
+    template_dir = kwargs['configuration']['interface_params']['template_dir']
+    template_fn = kwargs['configuration']['interface_params']['template_file']
+    template_fp = os.path.join(template_dir, template_fn)
+    with open(template_fp) as f:
+        template_html = f.read()
+    template_args = re.findall(r'\{\{(.*?)\}', template_html)
+    return set(template_args)
+
+
+@configure
+def expected_cost(data, **kwargs):
     """
     Computes the expected cost of a hit batch
     To adjust for subtleties of the amt fees, see:
@@ -41,14 +55,14 @@ def expected_cost(data, task_configs):
     :param task_configs:
     :return: cost if sufficient funds, false if not
     """
-    hit_params = task_configs['hit_params']
+    hit_params = kwargs['configuration']['hit_params']
     base_cost = float(hit_params['Reward'])
     n_assignments_per_hit = hit_params['MaxAssignments']
-    min_fee_per_assignment = 0.01
     fee_percentage = 0.2 if n_assignments_per_hit < 10 else 0.4
+    min_fee_per_assignment = 0.01
     fee_per_assignment = max(fee_percentage * base_cost, min_fee_per_assignment) + base_cost
     cost_plus_fee = round(n_assignments_per_hit * fee_per_assignment * len(data), 2)
-    current_balance = get_numerical_balance(task_configs)
+    current_balance = get_numerical_balance()
     if cost_plus_fee > current_balance:
         print(
             f'Insufficient funds: batch will cost ${cost_plus_fee:.{2}f}',
@@ -60,99 +74,84 @@ def expected_cost(data, task_configs):
     return cost_plus_fee
 
 
-def load_config(config_fp):
-    import yaml
-    with open(config_fp, 'r') as stream:
-        try:
-            task_config = yaml.load(stream)
-        except yaml.YAMLError as exc:
-            print(exc)
-            task_config = None
-    return task_config
-
-
-def create_directories(directories):
-    for current_dir in directories:
-        os.makedirs(current_dir, exist_ok=True)
-
-
 @decorator
-@configure
 def serialize_action_result(action, *args, **kwargs):
     configs = kwargs['configuration']
     available_serializers = {
-        'json': dump_json,
-        'pickle': dump_pickle
+        'json': _dump_json,
+        'pickle': _dump_pickle
     }
     output_format = configs['serialization_params']['output_format']
     serializer = available_serializers.get(output_format, None)
     res = action(*args, **kwargs)
     if serializer:
-        output_fp = prepare_output_path(action, configs)
+        output_fp = _prepare_output_path(action, configs)
         serializer(res, output_fp, compress=configs['serialization_params']['compress'])
+    return res
 
 
-def prepare_output_path(action, configs):
+def _prepare_output_path(action, configs):
     output_dir_base = configs['serialization_params']['output_dir_base']
     experiment = configs['experiment_params']['experiment_name']
     out_dir = os.path.join(output_dir_base, experiment)
     os.makedirs(out_dir, exist_ok=True)
     action_name = action.__name__
-    environment = 'prod' if configs['amt_client_params'] else 'sbox'
-    timestamp = create_timestamp()
+    environment = 'prod' if configs['amt_client_params']['in_production'] else 'sbox'
+    timestamp = _create_timestamp()
     file_name = '--'.join([environment, action_name, timestamp])
     output_fp = os.path.join(out_dir, file_name)
     return output_fp
 
 
-def create_timestamp():
+def _create_timestamp():
     _, month, day, clock, year, = time.asctime().lower().split()
     hour, minute, sec = clock.split(':')
     timestamp = '_'.join([year, month, day, hour, minute])
     return timestamp
 
 
-def read(file_name, mode='rb'):
+def _read(file_name, mode='rb'):
     with open(file_name, mode) as f:
         return f.read()
 
 
-def write(file_name, data, mode='wb'):
+def _write(file_name, data, mode='wb'):
     with open(file_name, mode) as f:
         f.write(data)
 
 
-def write_compressed(file_name, data, compress_level, mode='wb'):
-    write(f'{file_name}.gz', gzip.compress(data, compresslevel=compress_level))
+def _write_compressed(file_name, data, compress_level, mode='wb'):
+    _write(f'{file_name}.gz', gzip.compress(data, compresslevel=compress_level))
 
 
-def append_file_ext(file_name, file_ext):
+def _append_file_ext(file_name, file_ext):
     if not file_name.endswith(file_ext):
         file_name = '.'.join([file_name, file_ext])
     return file_name
 
 
-def load_json(file_name, compress):
-    file_name = append_file_ext(file_name, 'json')
+def _load_json(file_name, compress):
+    file_name = _append_file_ext(file_name, 'json')
     if compress:
-        return json.loads(gzip.decompress(read(file_name)).decode('utf8'))
+        return json.loads(gzip.decompress(_read(file_name)).decode('utf8'))
     else:
-        return json.loads(read(file_name, 'r'))
+        return json.loads(_read(file_name, 'r'))
 
 
-def dump_json(dump_object, file_name, compress, indent=4, compress_level=9) :
-    file_name = append_file_ext(file_name, 'json')
+def _dump_json(dump_object, file_name, compress, indent=4, compress_level=9) :
+    file_name = _append_file_ext(file_name, 'json')
     if compress:
-        data = json.dumps(dump_object, sort_keys=True)
-        write_compressed(file_name, data.encode('utf8'), compress_level)
+        data = json.dumps(dump_object, sort_keys=True, default=str)
+        _write_compressed(file_name, data.encode('utf8'), compress_level)
     else:
-        data = json.dumps(dump_object, sort_keys=True, indent=indent)
-        write(file_name, data, 'w')
+        data = json.dumps(dump_object, sort_keys=True, indent=indent, default=str)
+        _write(file_name, data, 'w')
+    return dump_object
 
 
-def load_pickle(file_name, compress):
-    file_name = append_file_ext(file_name, 'pkl')
-    data = read(file_name)
+def _load_pickle(file_name, compress):
+    file_name = _append_file_ext(file_name, 'pkl')
+    data = _read(file_name)
     if compress:
         load_object = pickle.loads(gzip.decompress(data))
     else:
@@ -160,10 +159,11 @@ def load_pickle(file_name, compress):
     return load_object
 
 
-def dump_pickle(dump_object, file_name, compress, compress_level=9):
-    file_name = append_file_ext(file_name, 'pkl')
+def _dump_pickle(dump_object, file_name, compress, compress_level=9):
+    file_name = _append_file_ext(file_name, 'pkl')
     data = pickle.dumps(dump_object)
     if compress:
-        write_compressed(file_name, data, compress_level)
+        _write_compressed(file_name, data, compress_level)
     else:
-        write(file_name, data)
+        _write(file_name, data)
+    return dump_object

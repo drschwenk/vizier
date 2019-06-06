@@ -7,6 +7,7 @@ import abc
 import boto3
 from decorator import decorator
 from botocore.exceptions import ClientError
+from .config import configure
 # from botocore.client import Config
 
 available_actions = {
@@ -15,6 +16,7 @@ available_actions = {
 
 
 @decorator
+@configure
 def amt_multi_action(action, *args, **kwargs):
     client_config = kwargs['configuration']['amt_client_params']
     n_threads = client_config['n_threads']
@@ -36,10 +38,9 @@ def amt_multi_action(action, *args, **kwargs):
         result_list.append(res_queue.get())
     return [item for sl in result_list for item in sl]
 
-
 @decorator
+@configure
 def amt_serial_action(action, *args, **kwargs):
-    # client_config = args[-1]['amt_client_params']
     client_config = kwargs['configuration']['amt_client_params']
     amt_client = MturkClient(**client_config).direct_amt_client()
     action_name, request_batch = action(*args, **kwargs)
@@ -48,6 +49,7 @@ def amt_serial_action(action, *args, **kwargs):
 
 
 @decorator
+@configure
 def amt_single_action(action, *args, **kwargs):
     # client_config = args[-1]['amt_client_params']
     client_config = kwargs['configuration']['amt_client_params']

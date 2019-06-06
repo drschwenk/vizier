@@ -9,6 +9,12 @@ DEFAULT_SETTINGS = {
         'n_threads': 1,
         'profile_name': 'mturk_vision'
     },
+    'hit_params': {
+        'frame_height': 1170,
+        'AssignmentDurationInHours': 1,
+        'AutoApprovalDelayInHours': 48,
+        'LifetimeInHours': 12
+    },
     'interface_params': {
         'template_dir': 'hit_templates',
         'preview_dir': 'interface_preview'
@@ -29,19 +35,35 @@ DEFAULT_SETTINGS = {
 def _load_settings_raw(config_fp):
     with open(config_fp, 'r') as stream:
         try:
-            task_config = yaml.load(stream)
+            task_config = yaml.safe_load(stream)
         except yaml.YAMLError as exc:
+            import sys
             print(exc)
-            task_config = None
+            print('failed to load configuration file')
+            sys.exit()
     return task_config
 
 
 def _set_defaults(raw_settings):
-
     for setting_cat, settings in raw_settings.items():
         for field, default in DEFAULT_SETTINGS.get(setting_cat, {}).items():
             if field not in settings:
                 settings[field] = default
+
+
+def _convert_setting_durations(raw_settings):
+    seconds_per_hour = 3600
+
+    to_convert = [
+     'AssignmentDurationInHours',
+     'AutoApprovalDelayInHours',
+     'LifetimeInHours'
+    ]
+    raw_hit_params = raw_settings['hit_params']
+    for field in to_convert:
+        n_hours = raw_hit_params.pop(field)
+        new_field = field.replace('Hours', 'Seconds')
+        raw_hit_params[new_field] = n_hours * seconds_per_hour
 
 
 def set_input_file_path(config_fp):
@@ -58,17 +80,6 @@ def configure(action, *args, **kwargs):
         sys.exit()
     configs = _load_settings_raw(configuration_yml_fp)
     _set_defaults(configs)
-    # global experiment_params
-    # experiment_params = settings.get('experiment_params')
-    # global amt_client_params
-    # amt_client_params = settings.get('amt_client_params')
-    # global hit_params
-    # hit_params = settings.get('hit_params')
-    # global interface_params
-    # interface_params = settings.get('interface_params')
-    # global serialization_params
-    # serialization_params = settings.get('serialization_params')
-    # global qualifications
-    # qualifications = settings.get('qualifications')
+    _convert_setting_durations(configs)
     kwargs.update({'configuration': configs})
     return action(*args, **kwargs)

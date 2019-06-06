@@ -1,9 +1,13 @@
 from .client_tasks import amt_serial_action
 from .client_tasks import amt_single_action
+from .config import configure
+from .utils import serialize_action_result
 
 
+@configure
+@serialize_action_result
 @amt_single_action
-def create_qualification(qualification, task_configs):
+def create_qualification(qualification, **kwargs):
     """
     Creates a new task qualification ID. The format of the qualification should follow:
     response = client.create_qualification_type(
@@ -24,8 +28,9 @@ def create_qualification(qualification, task_configs):
     return 'create_qualification_type', qualification
 
 
+@configure
 @amt_serial_action
-def grant_qualification_to_workers(qualification_id, worker_ids, notify):
+def grant_qualification_to_workers(qualification_id, worker_ids, notify=True):
     """
     Grants qualification to workers
     :param qualification_id: qualification ID
@@ -44,6 +49,7 @@ def grant_qualification_to_workers(qualification_id, worker_ids, notify):
     return 'associate_qualification_with_worker', requests
 
 
+@configure
 @amt_serial_action
 def remove_qualification_from_workers(qualification_id, worker_ids, reason=''):
     """
@@ -63,8 +69,9 @@ def remove_qualification_from_workers(qualification_id, worker_ids, reason=''):
     return 'disassociate_qualification_with_worker', requests
 
 
+@configure
 @amt_serial_action
-def message_workers(worker_ids, subject, message, task_configs):
+def message_workers(worker_ids, subject, message):
     """
     Messages a list of workers with a supplied message.
     :param worker_ids: list of worker IDs to message
@@ -87,8 +94,9 @@ def message_workers(worker_ids, subject, message, task_configs):
     return 'notify_workers', requests
 
 
+@configure
 @amt_serial_action
-def send_bonuses(worker_bonus_assignments, amounts, reason, task_configs):
+def send_bonuses(worker_bonus_assignments, amounts, reason):
     requests = []
     for worker_id, assignments in worker_bonus_assignments.items():
         amount = amounts[worker_id]
