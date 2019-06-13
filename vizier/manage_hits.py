@@ -9,7 +9,7 @@ from .utils import serialize_action_result
 
 @amt_multi_action
 @surface_hit_data
-def get_grouped_assignments(hits):
+def get_grouped_assignments(hits, **kwargs):
     """
     Retrieved assignments associated with _batch
     :param hits: list of AMT _batch
@@ -18,21 +18,18 @@ def get_grouped_assignments(hits):
     return 'GetAssignments', hits
 
 
-def get_assignments(hits):
+def get_assignments(hits, **kwargs):
     grouped_assignments = get_grouped_assignments(hits)
     assignments = [asg for hit in grouped_assignments for asg in hit.get('Assignments', [])]
     return [asg for asg in assignments if asg]
 
 
-def get_assignment_metadata(assignments):
-    pass
-
-
+@configure
 @serialize_action_result
-def get_and_extract_results(hits):
+def get_and_extract_results(hits, **kwargs):
     """
     Retrieves AMT assignments and extracts turker responses
-    :param hits: list of AMT _batch
+    :param hits: list of AMT hits
     :return: dict of task results keyed on their globalID
     """
     assignments = get_assignments(hits)
@@ -41,7 +38,7 @@ def get_and_extract_results(hits):
 
 
 @amt_multi_action
-def approve_assignments(assignments):
+def approve_assignments(assignments, **kwargs):
     """
     Approves assignments
     :param assignments: list of assignments to improve
@@ -113,19 +110,18 @@ def get_all_hits(**kwargs):
 
 
 @amt_multi_action
-def expire_hits(hits):
+def expire_hits(hits, **kwargs):
     """
     Sets hit expiration to a date in the past
     :param hits: hit batch to expire
     :return: AMT client responses
     """
-    return 'ExpireHIts', hits
+    return 'ExpireHits', hits
 
 
-@configure
 @amt_multi_action
 @surface_hit_data
-def delete_hits(hits):
+def delete_hits(hits, **kwargs):
     """
     Deletes (permanently removes) _batch
     :param hits: _batch to delete

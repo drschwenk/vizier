@@ -13,16 +13,14 @@ def surface_hit_data(action, *args, **kwargs):
     action_name, hits = action(*args, **kwargs)
     if hits and hits[0].get('HIT'):
         return action_name, [hit['HIT'] for hit in hits]
-    else:
-        return action_name, hits
+    return action_name, hits
 
 
 @amt_single_action
-def get_account_balance():
+def get_account_balance(**kwargs):
     return 'get_account_balance', None
 
 
-@configure
 def get_numerical_balance():
     balance_response = get_account_balance()
     return float(balance_response['AvailableBalance'])
@@ -39,8 +37,8 @@ def recall_template_args(**kwargs):
     template_dir = kwargs['configuration']['interface_params']['template_dir']
     template_fn = kwargs['configuration']['interface_params']['template_file']
     template_fp = os.path.join(template_dir, template_fn)
-    with open(template_fp) as f:
-        template_html = f.read()
+    with open(template_fp) as file:
+        template_html = file.read()
     template_args = re.findall(r'\{\{(.*?)\}', template_html)
     return set(template_args)
 
@@ -69,12 +67,11 @@ def expected_cost(data, **kwargs):
             f'and only ${current_balance:.{2}f} available.',
             f'An additional ${cost_plus_fee - current_balance:.{2}f} is needed.'
         )
-        return False
     print(f'Batch will cost ${cost_plus_fee:.{2}f}')
-    return cost_plus_fee
 
 
 @decorator
+@configure
 def serialize_action_result(action, *args, **kwargs):
     configs = kwargs['configuration']
     available_serializers = {
@@ -88,6 +85,20 @@ def serialize_action_result(action, *args, **kwargs):
         output_fp = _prepare_output_path(action, configs)
         serializer(res, output_fp, compress=configs['serialization_params']['compress'])
     return res
+
+
+@configure
+def deserialize_action_result(input_fp, **kwargs):
+    configs = kwargs['configuration']
+    available_deserializers = {
+        'json': _load_json,
+        'pickle': _load_pickle
+    }
+    output_format = configs['serialization_params']['output_format']
+    deserializer = available_deserializers.get(output_format, None)
+    if deserializer:
+        return deserializer(input_fp, compress=configs['serialization_params']['compress'])
+    return None
 
 
 def _prepare_output_path(action, configs):
@@ -105,22 +116,22 @@ def _prepare_output_path(action, configs):
 
 def _create_timestamp():
     _, month, day, clock, year, = time.asctime().lower().split()
-    hour, minute, sec = clock.split(':')
+    hour, minute, _ = clock.split(':')
     timestamp = '_'.join([year, month, day, hour, minute])
     return timestamp
 
 
 def _read(file_name, mode='rb'):
-    with open(file_name, mode) as f:
-        return f.read()
+    with open(file_name, mode) as file:
+        return file.read()
 
 
 def _write(file_name, data, mode='wb'):
-    with open(file_name, mode) as f:
-        f.write(data)
+    with open(file_name, mode) as file:
+        file.write(data)
 
 
-def _write_compressed(file_name, data, compress_level, mode='wb'):
+def _write_compressed(file_name, data, compress_level):
     _write(f'{file_name}.gz', gzip.compress(data, compresslevel=compress_level))
 
 
@@ -134,11 +145,10 @@ def _load_json(file_name, compress):
     file_name = _append_file_ext(file_name, 'json')
     if compress:
         return json.loads(gzip.decompress(_read(file_name)).decode('utf8'))
-    else:
-        return json.loads(_read(file_name, 'r'))
+    return json.loads(_read(file_name, 'r'))
 
 
-def _dump_json(dump_object, file_name, compress, indent=4, compress_level=9) :
+def _dump_json(dump_object, file_name, compress, indent=4, compress_level=9):
     file_name = _append_file_ext(file_name, 'json')
     if compress:
         data = json.dumps(dump_object, sort_keys=True, default=str)
@@ -167,3 +177,5 @@ def _dump_pickle(dump_object, file_name, compress, compress_level=9):
     else:
         _write(file_name, data)
     return dump_object
+
+

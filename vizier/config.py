@@ -1,5 +1,7 @@
 import yaml
 from decorator import decorator
+from functools import reduce
+import operator
 
 configuration_yml_fp = None
 
@@ -7,7 +9,8 @@ DEFAULT_SETTINGS = {
     'amt_client_params': {
         'in_production': False,
         'n_threads': 1,
-        'profile_name': 'mturk_vision'
+        'profile_name': 'mturk_vision',
+        's3_profile_name': 'default'
     },
     'hit_params': {
         'frame_height': 1170,
@@ -20,6 +23,7 @@ DEFAULT_SETTINGS = {
         'preview_dir': 'interface_preview'
     },
     'serialization_params': {
+        'serialize': True,
         'output_dir_base': 'amt_output',
         'output_format': 'json',
         'compress': False
@@ -53,7 +57,6 @@ def _set_defaults(raw_settings):
 
 def _convert_setting_durations(raw_settings):
     seconds_per_hour = 3600
-
     to_convert = [
      'AssignmentDurationInHours',
      'AutoApprovalDelayInHours',
@@ -81,5 +84,18 @@ def configure(action, *args, **kwargs):
     configs = _load_settings_raw(configuration_yml_fp)
     _set_defaults(configs)
     _convert_setting_durations(configs)
+    override_configs = kwargs.get('override', None)
+    if override_configs:
+        for setting in override_configs:
+            set_by_path(configs, setting['keys'], setting['value'])
     kwargs.update({'configuration': configs})
     return action(*args, **kwargs)
+
+
+def get_by_path(configs, key_path):
+    return reduce(operator.getitem, key_path, configs)
+
+
+def set_by_path(configs, key_path, value):
+    get_by_path(configs, key_path[:-1])[key_path[-1]] = value
+

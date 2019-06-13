@@ -5,6 +5,7 @@ import queue
 import threading
 import abc
 import boto3
+import logging
 from decorator import decorator
 from botocore.exceptions import ClientError
 from .config import configure
@@ -21,13 +22,12 @@ def amt_multi_action(action, *args, **kwargs):
     client_config = kwargs['configuration']['amt_client_params']
     n_threads = client_config['n_threads']
     action_name, hit_batch = action(*args, **kwargs)
-    Action = globals().get(action_name)
-
+    action = globals().get(action_name)
     hit_batches = [hit_batch[i::n_threads] for i in range(n_threads)]
     threads = []
     res_queue = queue.Queue()
     for batch in hit_batches:
-        thread = Action(batch, res_queue, **client_config)
+        thread = action(batch, res_queue, **client_config)
         threads.append(thread)
     for thread in threads:
         thread.start()
@@ -37,6 +37,7 @@ def amt_multi_action(action, *args, **kwargs):
     while not res_queue.empty():
         result_list.append(res_queue.get())
     return [item for sl in result_list for item in sl]
+
 
 @decorator
 @configure
@@ -51,7 +52,6 @@ def amt_serial_action(action, *args, **kwargs):
 @decorator
 @configure
 def amt_single_action(action, *args, **kwargs):
-    # client_config = args[-1]['amt_client_params']
     client_config = kwargs['configuration']['amt_client_params']
     amt_client = MturkClient(**client_config).direct_amt_client()
     action_name, client_action_args = action(*args, **kwargs)
@@ -63,29 +63,15 @@ def amt_single_action(action, *args, **kwargs):
 
 class MturkClient:
     def __init__(self, **kwargs):
-        self.in_production = kwargs['in_production']
-        environments = {
-            "production": {
-                "endpoint": "https://mturk-requester.us-east-1.amazonaws.com",
-                "preview": "https://www.mturk.com/mturk/preview",
-                "manage": "https://requester.mturk.com/mturk/manageHITs",
-                "reward": "0.00"
-            },
-            "sandbox": {
-                "endpoint": "https://mturk-requester-sandbox.us-east-1.amazonaws.com",
-                "preview": "https://workersandbox.mturk.com/mturk/preview",
-                "manage": "https://requestersandbox.mturk.com/mturk/manageHITs",
-                "reward": "0.01"
-            },
-        }
-        # config = Config(connect_timeout=300, read_timeout=300)
-        self.mturk_environment = environments['production'] \
-            if kwargs['in_production'] else environments['sandbox']
         session = boto3.Session(profile_name=kwargs['profile_name'])
+        in_production = kwargs.get('in_production', False)
+        endpoints = {
+            True: 'https://mturk-requester.us-east-1.amazonaws.com',
+            False: 'https://mturk-requester-sandbox.us-east-1.amazonaws.com'
+        }
         self.client = session.client(
             service_name='mturk',
-            endpoint_url=self.mturk_environment['endpoint'],
-            # config=config
+            endpoint_url=endpoints[in_production],
         )
 
     @classmethod
@@ -94,11 +80,21 @@ class MturkClient:
             response = action(**kwargs)
             return response
         except ClientError as err:
-            print(err)
+            logging.error(err)
             raise
 
     def direct_amt_client(self):
         return self.client
+
+
+# class S3Client(AmtClient):
+#     def __init__(self, **kwargs):
+#         client_params = {
+#             'service_name': 's3',
+#             'profile_name': kwargs['s3_profile_name']
+#         }
+#         kwargs.update(client_params)
+#         super().__init__(**kwargs)
 
 
 class BotoThreadedOperation(threading.Thread):
@@ -208,7 +204,7 @@ class DeleteHits(BotoThreadedOperation):
         self.action = getattr(self.amt.client, 'delete_hit')
 
     def run(self):
-        disposed_hits = [h for h in self._batch if h['HITStatus'] != 'Disposed']
-        responses = [self.amt.client.perform(
-            self.action, HITId=h['HITId']) for h in disposed_hits]
+        to_dispose_hits = [h for h in self._batch if h['HITStatus'] != 'Disposed']
+        responses = [self.amt.perform(
+            self.action, HITId=h['HITId']) for h in to_dispose_hits]
         self._queue.put(responses)

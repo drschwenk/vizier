@@ -1,18 +1,21 @@
 from decorator import decorator
+from .config import configure
 
-master_qual_ids = {'production': '2F1QJWKUDD8XADTFD2Q0G6UTO95ALH',
-                   'sandbox': '2ARFPLSP75KLA8M8DH1HTEQVJT3SY6'}
 
 amt_environment = 'sandbox'
+MASTER_QUAL_IDS = {'production': '2F1QJWKUDD8XADTFD2Q0G6UTO95ALH',
+                   'sandbox': '2ARFPLSP75KLA8M8DH1HTEQVJT3SY6'}
 
 
-def build_qualifications(qualifications, in_production):
+@configure
+def build_qualifications(**kwargs):
     """
     builds qualifications for task
-    :param qualifications:
     :return: list of qualification dicts
     """
     global amt_environment
+    qualifications = kwargs['qualifications']
+    in_production = kwargs['amt_client_params']['in_production']
     amt_environment = 'production' if in_production else 'sandbox'
     quals = [_qual_builder(qual)(setting) for qual, setting in qualifications.items()]
     return list(filter(None, quals))
@@ -58,7 +61,7 @@ def _min_total_hits_approved(setting):
 
 @_check_qual_inclusion
 def _master(setting):
-    master_qual_id = master_qual_ids.get(amt_environment, '')
+    master_qual_id = MASTER_QUAL_IDS.get(amt_environment, '')
     if not master_qual_id:
         return None
     return {
