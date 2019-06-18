@@ -83,7 +83,6 @@ def message_workers(worker_ids, subject, message):
     n_workers = len(worker_ids)
     n_batches, rem = divmod(n_workers, batch_length)
     n_batches += bool(rem)
-
     worker_batches = [worker_ids[i::n_batches] for i in range(n_batches)]
     requests = []
     for workers in worker_batches:
@@ -97,6 +96,13 @@ def message_workers(worker_ids, subject, message):
 @configure
 @amt_serial_action
 def send_bonuses(worker_bonus_assignments, amounts, reason):
+    """
+    Send bonuses to workers for a set of assignments
+    :param worker_bonus_assignments
+    :param amounts:
+    :param reason:
+    :return:
+    """
     requests = []
     for worker_id, assignments in worker_bonus_assignments.items():
         amount = amounts[worker_id]

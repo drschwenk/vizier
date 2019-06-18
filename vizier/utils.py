@@ -9,7 +9,7 @@ from .config import configure
 
 
 @decorator
-def surface_hit_data(action, *args, **kwargs):
+def surface_hit_ids(action, *args, **kwargs):
     action_name, hits = action(*args, **kwargs)
     if hits and hits[0].get('HIT'):
         return action_name, [hit['HIT'] for hit in hits]
@@ -33,6 +33,11 @@ def print_balance():
 
 @configure
 def recall_template_args(**kwargs):
+    """
+    Collects all of the arguments expected by the interface template
+    at HIT creation
+    : return (set): the expected arguments
+    """
     import re
     template_dir = kwargs['configuration']['interface_params']['template_dir']
     template_fn = kwargs['configuration']['interface_params']['template_file']
@@ -50,7 +55,6 @@ def expected_cost(data, **kwargs):
     To adjust for subtleties of the amt fees, see:
     www.mturk.com/pricing
     :param data: task data
-    :param task_configs:
     :return: cost if sufficient funds, false if not
     """
     hit_params = kwargs['configuration']['hit_params']
@@ -101,15 +105,18 @@ def deserialize_action_result(input_fp, **kwargs):
     return None
 
 
-def _prepare_output_path(action, configs):
+def _prepare_output_path(action, configs, include_timestamp=True):
     output_dir_base = configs['serialization_params']['output_dir_base']
-    experiment = configs['experiment_params']['experiment_name']
+    experiment = configs['experiment_params']['batch_id']
     out_dir = os.path.join(output_dir_base, experiment)
     os.makedirs(out_dir, exist_ok=True)
-    action_name = action.__name__
+    action_name = action.__name__ if callable(action) else action
     environment = 'prod' if configs['amt_client_params']['in_production'] else 'sbox'
-    timestamp = _create_timestamp()
-    file_name = '--'.join([environment, action_name, timestamp])
+    if include_timestamp:
+        timestamp = _create_timestamp()
+        file_name = '--'.join([environment, timestamp, action_name])
+    else:
+        file_name = '--'.join([environment, action_name])
     output_fp = os.path.join(out_dir, file_name)
     return output_fp
 
@@ -177,5 +184,3 @@ def _dump_pickle(dump_object, file_name, compress, compress_level=9):
     else:
         _write(file_name, data)
     return dump_object
-
-

@@ -1,10 +1,8 @@
 from decorator import decorator
 from .config import configure
-
+from .config import MASTER_QUAL_IDS
 
 amt_environment = 'sandbox'
-MASTER_QUAL_IDS = {'production': '2F1QJWKUDD8XADTFD2Q0G6UTO95ALH',
-                   'sandbox': '2ARFPLSP75KLA8M8DH1HTEQVJT3SY6'}
 
 
 @configure

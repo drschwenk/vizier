@@ -1,8 +1,8 @@
 import os
 import io
-import boto3
-import json
 import base64
+import json
+import boto3
 from decorator import decorator
 from .config import configure
 
@@ -28,7 +28,8 @@ def list_objects(bucket, prefix='', **kwargs):
     continuation_token = None
     while True:
         if continuation_token:
-            objects = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix, ContinuationToken=continuation_token)
+            objects = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix,
+                                                ContinuationToken=continuation_token)
         else:
             objects = s3_client.list_objects_v2(Bucket=bucket, Prefix=prefix)
         for i in objects.get('Contents', []):
@@ -41,12 +42,12 @@ def list_objects(bucket, prefix='', **kwargs):
 
 def build_object_path(obj_name=None, **kwargs):
     project_name = kwargs['configuration']['experiment_params']['project_name']
-    experiment_name = kwargs['configuration']['experiment_params']['experiment_name']
+    batch_id = kwargs['configuration']['experiment_params']['batch_id']
     s3_storage_loc = kwargs['configuration']['experiment_params']['s3_storage_location']
     s3_storage_loc = s3_storage_loc.split('/')
     bucket_name = s3_storage_loc[0]
     base_prefix = '/'.join(s3_storage_loc[1:])
-    path_prefix = os.path.join(base_prefix, project_name, experiment_name)
+    path_prefix = os.path.join(base_prefix, project_name, batch_id)
     obj_key = os.path.join(path_prefix, obj_name)
     return bucket_name, path_prefix, obj_key
 
@@ -57,6 +58,7 @@ def _prepare_json_for_s3_upload(obj):
     return io.BytesIO(obj)
 
 
+@decorator
 @configure
 def upload_object(obj_name, obj=None, obj_path=None, **kwargs):
     s3_client = _create_s3_client(**kwargs)
@@ -74,8 +76,7 @@ def upload_object(obj_name, obj=None, obj_path=None, **kwargs):
 @configure
 def download_object(obj_name, **kwargs):
     s3_client = _create_s3_client(**kwargs)
-    bucket_name, path_prefix, obj_key = build_object_path(obj_name, **kwargs)
+    bucket_name, _, obj_key = build_object_path(obj_name, **kwargs)
     obj_resp = s3_client.get_object(Bucket=bucket_name, Key=obj_key)
     bin_obj = obj_resp['Body'].read()
     return json.loads(base64.decodebytes(bin_obj))
-

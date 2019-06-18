@@ -5,15 +5,10 @@ import queue
 import threading
 import abc
 import boto3
-import logging
 from decorator import decorator
 from botocore.exceptions import ClientError
 from .config import configure
-# from botocore.client import Config
-
-available_actions = {
-    'CreateHits': ''
-}
+from .log import logger
 
 
 @decorator
@@ -36,7 +31,9 @@ def amt_multi_action(action, *args, **kwargs):
     result_list = []
     while not res_queue.empty():
         result_list.append(res_queue.get())
-    return [item for sl in result_list for item in sl]
+    resp = [item for sub_l in result_list for item in sub_l]
+    logger.info('performed %s %s actions', len(resp), action_name)
+    return resp
 
 
 @decorator
@@ -46,7 +43,9 @@ def amt_serial_action(action, *args, **kwargs):
     amt_client = MturkClient(**client_config).direct_amt_client()
     action_name, request_batch = action(*args, **kwargs)
     client_action = getattr(amt_client, action_name)
-    return [client_action(**req) for req in request_batch]
+    resp = [client_action(**req) for req in request_batch]
+    logger.info('performed %s %s actions', len(resp), action_name)
+    return resp
 
 
 @decorator
@@ -58,7 +57,9 @@ def amt_single_action(action, *args, **kwargs):
     client_action = getattr(amt_client, action_name)
     if not client_action_args:
         return client_action()
-    return client_action(**client_action_args)
+    resp = client_action(**client_action_args)
+    logger.info('performed %s action', action_name)
+    return resp
 
 
 class MturkClient:
@@ -80,21 +81,11 @@ class MturkClient:
             response = action(**kwargs)
             return response
         except ClientError as err:
-            logging.error(err)
+            logger.error(err)
             raise
 
     def direct_amt_client(self):
         return self.client
-
-
-# class S3Client(AmtClient):
-#     def __init__(self, **kwargs):
-#         client_params = {
-#             'service_name': 's3',
-#             'profile_name': kwargs['s3_profile_name']
-#         }
-#         kwargs.update(client_params)
-#         super().__init__(**kwargs)
 
 
 class BotoThreadedOperation(threading.Thread):

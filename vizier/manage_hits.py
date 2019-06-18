@@ -2,13 +2,13 @@ from collections import defaultdict
 import json
 import xmltodict
 from .client_tasks import amt_multi_action
-from .utils import surface_hit_data
+from .utils import surface_hit_ids
 from .config import configure
 from .utils import serialize_action_result
 
 
 @amt_multi_action
-@surface_hit_data
+@surface_hit_ids
 def get_grouped_assignments(hits, **kwargs):
     """
     Retrieved assignments associated with _batch
@@ -120,7 +120,7 @@ def expire_hits(hits, **kwargs):
 
 
 @amt_multi_action
-@surface_hit_data
+@surface_hit_ids
 def delete_hits(hits, **kwargs):
     """
     Deletes (permanently removes) _batch
@@ -148,7 +148,7 @@ def force_delete_hits(hits, force=False, **kwargs):
 
 @configure
 @amt_multi_action
-@surface_hit_data
+@surface_hit_ids
 def set_hits_reviewing(hits, **kwargs):
     """
     Sets hit status to reviewing
@@ -160,7 +160,7 @@ def set_hits_reviewing(hits, **kwargs):
 
 @configure
 @amt_multi_action
-@surface_hit_data
+@surface_hit_ids
 def revert_hits_reviewable(hits, **kwargs):
     """
     Reverts hit reviewing status
@@ -170,7 +170,7 @@ def revert_hits_reviewable(hits, **kwargs):
     return 'UpdateHITsReviewStatus', hits#,  revert=True)
 
 
-@surface_hit_data
+@surface_hit_ids
 def get_assignable_hits(hits):
     hit_statuses = get_hit_statuses(hits)
     return [h for h in hit_statuses if h == 'Assignable']
@@ -185,6 +185,6 @@ def get_hit_statuses(hits):
 
 @configure
 @amt_multi_action
-@surface_hit_data
+@surface_hit_ids
 def get_updated_hits(hits, **kwargs):
     return 'GetHITs', hits
