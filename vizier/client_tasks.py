@@ -40,7 +40,7 @@ def amt_multi_action(action, *args, **kwargs):
 @configure
 def amt_serial_action(action, *args, **kwargs):
     client_config = kwargs['configuration']['amt_client_params']
-    amt_client = MturkClient(**client_config).direct_amt_client()
+    amt_client = MturkClient(**client_config).amt_client()
     action_name, request_batch = action(*args, **kwargs)
     client_action = getattr(amt_client, action_name)
     resp = [client_action(**req) for req in request_batch]
@@ -52,7 +52,7 @@ def amt_serial_action(action, *args, **kwargs):
 @configure
 def amt_single_action(action, *args, **kwargs):
     client_config = kwargs['configuration']['amt_client_params']
-    amt_client = MturkClient(**client_config).direct_amt_client()
+    amt_client = MturkClient(**client_config).amt_client()
     action_name, client_action_args = action(*args, **kwargs)
     client_action = getattr(amt_client, action_name)
     if not client_action_args:
@@ -84,7 +84,7 @@ class MturkClient:
             logger.error(err)
             raise
 
-    def direct_amt_client(self):
+    def amt_client(self):
         return self.client
 
 

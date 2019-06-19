@@ -15,7 +15,8 @@ def init_logging(log_format='default', log_level='debug'):
             log_format = '%(asctime)s: %(levelname)s: %(message)s \t[%(filename)s: %(lineno)d]'
         date_format = '%m/%d %I:%M:%S'
         formatter = logging.Formatter(fmt=log_format, datefmt=date_format)
-        log_out_path = 'iconary_metrics_task_output/metric_val_420_2/logs/test.log'
+        # log_out_path = 'iconary_metrics_task_output/metric_val_420_2/logs/test.log'
+        log_out_path = 'test.log'
         chan = logging.StreamHandler()
         file_handler = logging.FileHandler(log_out_path)
         logger.setLevel(base_logging_level)

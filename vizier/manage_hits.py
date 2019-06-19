@@ -96,7 +96,7 @@ def get_all_hits(**kwargs):
     """
     from .client_tasks import MturkClient
     client_config = kwargs['configuration']['amt_client_params']
-    amt_client = MturkClient(**client_config).direct_amt_client()
+    amt_client = MturkClient(**client_config).amt_client()
     paginator = amt_client.get_paginator('list_hits')
     response_iterator = paginator.paginate(
         PaginationConfig={
