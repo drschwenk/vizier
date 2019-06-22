@@ -23,6 +23,7 @@ def _create_html_hit_params(**kwargs):
 
 def _render_hit_html(**kwargs):
     interface_params = kwargs['configuration']['interface_params']
+    logger.debug('rendering %s template', interface_params['template_file'])
     missing_args = recall_template_args().difference(set(kwargs.keys()))
     if missing_args:
         print(f'{missing_args} are referenced in template but not supplied by template generator')

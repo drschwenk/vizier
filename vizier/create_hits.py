@@ -1,6 +1,4 @@
 import os
-
-
 from .config import configure
 from .config import load_interface_arg_generator
 from .utils import serialize_action_result
@@ -9,7 +7,6 @@ from .client_tasks import amt_multi_action
 from .client_tasks import amt_single_action
 from .html_hit import _create_html_hit_params
 from .html_hit import _render_hit_html
-# from .qualifications import build_qualifications
 
 
 @configure
@@ -40,9 +37,9 @@ def create_single_hit(datum, **kwargs):
 
 
 @configure(record_config=True)
-def preview_hit_interface(data_point, **kwargs):
+def preview_hit_interface(datum, **kwargs):
     """
-    :param data_point:
+    :param datum:
     :return:
     """
     logger.info('preview')
@@ -51,7 +48,7 @@ def preview_hit_interface(data_point, **kwargs):
     preview_dir = task_configs['interface_params']['preview_dir']
     preview_filename = ''.join([task_configs['experiment_params']['batch_id'], '.html'])
     preview_out_file = os.path.join(preview_dir, preview_filename)
-    hit_html = _render_hit_html(**interface_arg_generator(data_point, **kwargs), **kwargs)
+    hit_html = _render_hit_html(**interface_arg_generator(datum, **kwargs), **kwargs)
     if not os.path.exists(preview_dir):
         os.makedirs(preview_dir)
     with open(preview_out_file, 'w') as file:

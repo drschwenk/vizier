@@ -2,9 +2,10 @@ from collections import defaultdict
 import json
 import xmltodict
 from .client_tasks import amt_multi_action
-from .utils import surface_hit_ids
 from .config import configure
+from .log import logger
 from .utils import serialize_action_result
+from .utils import surface_hit_ids
 
 
 @amt_multi_action
@@ -18,13 +19,13 @@ def get_grouped_assignments(hits, **kwargs):
     return 'GetAssignments', hits
 
 
+@serialize_action_result
 def get_assignments(hits, **kwargs):
     grouped_assignments = get_grouped_assignments(hits)
     assignments = [asg for hit in grouped_assignments for asg in hit.get('Assignments', [])]
     return [asg for asg in assignments if asg]
 
 
-@configure
 @serialize_action_result
 def get_and_extract_results(hits, **kwargs):
     """
@@ -138,6 +139,7 @@ def force_delete_hits(hits, force=False, **kwargs):
     :param force: flag to overcome production warning
     :return: AMT client responses
     """
+    logger.info('force-deleting %s hits', len(hits))
     in_production = kwargs['configuration']['amt_client_params']['in_production']
     if not force and in_production:
         print('Careful with this in production. Override with force=True')

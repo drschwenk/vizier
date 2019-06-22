@@ -93,6 +93,7 @@ def set_input_file_path(config_fp):
     global configuration_yml_fp
     configuration_yml_fp = config_fp
     print(f'using {configuration_yml_fp} for task configuration')
+    return configuration_yml_fp
 
 
 @decorator

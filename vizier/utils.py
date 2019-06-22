@@ -6,6 +6,7 @@ import pickle
 from decorator import decorator
 from .client_tasks import amt_single_action
 from .config import configure
+from .log import logger
 
 
 @decorator
@@ -78,21 +79,26 @@ def expected_cost(data, **kwargs):
 @configure
 def serialize_action_result(action, *args, **kwargs):
     configs = kwargs['configuration']
+    output_format = configs['serialization_params']['output_format']
+    output_fp = _prepare_output_path(action, configs)
+    compress = configs['serialization_params']['compress']
+    res = action(*args, **kwargs)
+    serialize_result(res, output_format, output_fp, compress=compress)
+    logger.info('%s results written to %s', action.__name__, output_fp)
+    return res
+
+
+def serialize_result(result, output_format, output_fp, compress=False):
     available_serializers = {
         'json': _dump_json,
         'pickle': _dump_pickle
     }
-    output_format = configs['serialization_params']['output_format']
     serializer = available_serializers.get(output_format, None)
-    res = action(*args, **kwargs)
-    if serializer:
-        output_fp = _prepare_output_path(action, configs)
-        serializer(res, output_fp, compress=configs['serialization_params']['compress'])
-    return res
+    serializer(result, output_fp, compress)
 
 
 @configure
-def deserialize_action_result(input_fp, **kwargs):
+def deserialize_result(input_fp, **kwargs):
     configs = kwargs['configuration']
     available_deserializers = {
         'json': _load_json,
@@ -184,3 +190,48 @@ def _dump_pickle(dump_object, file_name, compress, compress_level=9):
     else:
         _write(file_name, data)
     return dump_object
+
+
+def load_input_data(data_fp, compress=False):
+    available_deserializers = {
+        'json': _load_json,
+        'pkl': _load_pickle
+    }
+    file_ext = os.path.splitext(data_fp)[-1].replace('.', '')
+    data_loader = available_deserializers.get(file_ext, None)
+    if not data_loader:
+        raise NotImplementedError
+    return data_loader(data_fp, compress)
+
+
+@configure
+def summarize_proposed_task(data, *args, **kwargs):
+    from pprint import pprint
+
+    def add_space():
+        for i in range(2):
+            print('.')
+
+    def add_section_break():
+        print('-'.join([''] * 100))
+
+    params_to_display = [
+        'experiment_params',
+        'hit_params',
+        'amt_client_params'
+    ]
+    add_section_break()
+    for param_type in params_to_display:
+        print(param_type, ':')
+        pprint(kwargs['configuration'][param_type])
+        add_section_break()
+    add_space()
+    expected_cost(data)
+    add_space()
+    print_balance()
+    add_space()
+    in_prod = kwargs['configuration']['amt_client_params']['in_production']
+    amt_environment = 'production' if in_prod else 'sandbox'
+    print(f'task will launched in {amt_environment.upper()}')
+    add_space()
+
