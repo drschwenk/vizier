@@ -3,7 +3,6 @@ import json
 import xmltodict
 from .client_tasks import amt_multi_action
 from .config import configure
-from .log import logger
 from .utils import serialize_action_result
 from .utils import surface_hit_ids
 
@@ -139,7 +138,6 @@ def force_delete_hits(hits, force=False, **kwargs):
     :param force: flag to overcome production warning
     :return: AMT client responses
     """
-    logger.info('force-deleting %s hits', len(hits))
     in_production = kwargs['configuration']['amt_client_params']['in_production']
     if not force and in_production:
         print('Careful with this in production. Override with force=True')

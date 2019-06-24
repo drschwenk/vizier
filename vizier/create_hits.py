@@ -2,7 +2,6 @@ import os
 from .config import configure
 from .config import load_interface_arg_generator
 from .utils import serialize_action_result
-from .log import logger
 from .client_tasks import amt_multi_action
 from .client_tasks import amt_single_action
 from .html_hit import _create_html_hit_params
@@ -42,6 +41,7 @@ def preview_hit_interface(datum, **kwargs):
     :param datum:
     :return:
     """
+    from .log import logger
     logger.info('preview')
     task_configs = kwargs['configuration']
     interface_arg_generator = load_interface_arg_generator(**kwargs)

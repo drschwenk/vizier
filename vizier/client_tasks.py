@@ -8,7 +8,6 @@ import boto3
 from decorator import decorator
 from botocore.exceptions import ClientError
 from .config import configure
-from .log import logger
 
 
 @decorator
@@ -24,7 +23,6 @@ def amt_multi_action(action, *args, **kwargs):
     for batch in hit_batches:
         thread = action(batch, res_queue, **client_config)
         threads.append(thread)
-    for thread in threads:
         thread.start()
     for thread in threads:
         thread.join()
@@ -32,6 +30,7 @@ def amt_multi_action(action, *args, **kwargs):
     while not res_queue.empty():
         result_list.append(res_queue.get())
     resp = [item for sub_l in result_list for item in sub_l]
+    from .log import logger
     logger.info('performed %s %s actions', len(resp), action_name)
     return resp
 
@@ -44,6 +43,7 @@ def amt_serial_action(action, *args, **kwargs):
     action_name, request_batch = action(*args, **kwargs)
     client_action = getattr(amt_client, action_name)
     resp = [client_action(**req) for req in request_batch]
+    from .log import logger
     logger.info('performed %s %s actions', len(resp), action_name)
     return resp
 
@@ -58,6 +58,7 @@ def amt_single_action(action, *args, **kwargs):
     if not client_action_args:
         return client_action()
     resp = client_action(**client_action_args)
+    from .log import logger
     logger.info('performed %s action', action_name)
     return resp
 
@@ -81,6 +82,7 @@ class MturkClient:
             response = action(**kwargs)
             return response
         except ClientError as err:
+            from .log import logger
             logger.error(err)
             raise
 

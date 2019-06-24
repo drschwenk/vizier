@@ -1,13 +1,19 @@
 import logging
+from .utils import _prepare_output_path
+from .config import configure
+
+LOG_LEVELS = {
+    'debug': logging.DEBUG,
+    'info': logging.INFO,
+    'warning': logging.WARNING
+}
 
 
-def init_logging(log_format='default', log_level='debug'):
-    log_levels = {
-        'debug': logging.DEBUG,
-        'info': logging.INFO,
-        'warning': logging.WARNING
-    }
-    base_logging_level = log_levels.get(log_level, None)
+@configure
+def init_logging(log_format='default', **kwargs):
+    task_config = kwargs['configuration']
+    log_level = task_config['experiment_params']['debug_level']
+    base_logging_level = LOG_LEVELS.get(log_level, None)
     if not base_logging_level:
         raise TypeError(f'{log_level} is an incorrect logging type!')
     if not logger.handlers:
@@ -15,8 +21,8 @@ def init_logging(log_format='default', log_level='debug'):
             log_format = '%(asctime)s: %(levelname)s: %(message)s \t[%(filename)s: %(lineno)d]'
         date_format = '%m/%d %I:%M:%S'
         formatter = logging.Formatter(fmt=log_format, datefmt=date_format)
-        # log_out_path = 'iconary_metrics_task_output/metric_val_420_2/logs/test.log'
-        log_out_path = 'test.log'
+        log_out_path = _prepare_output_path('log.txt', task_config, include_timestamp=False)
+        print(log_out_path)
         chan = logging.StreamHandler()
         file_handler = logging.FileHandler(log_out_path)
         logger.setLevel(base_logging_level)

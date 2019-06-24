@@ -1,35 +1,22 @@
-from invoke import Collection, task
 import subprocess
+from invoke import task
 from vizier import utils
 from vizier import create_hits
 from vizier import manage_hits
 from vizier import config
-import warnings
 
 
 @task
 def _setup_task_config(ctx):
     config_file = ctx.get('task_config_fp', None)
     config_fp_used = config.set_input_file_path(config_file)
-    utils.logger.info('using %s for task configuration', config_fp_used)
-
-
-def confirm_action(prompt):
-    while True:
-        confirm = input(prompt)
-        if confirm.lower() in ('y', 'n', 'yes', 'no'):
-            if 'y' != confirm[0]:
-                import sys
-                print('aborting...')
-                sys.exit()
-            break
-        else:
-            print("\n Invalid--Please enter y or n.")
+    from vizier.log import logger
+    logger.debug('using %s for task configuration', config_fp_used)
 
 
 @task(pre=[_setup_task_config])
-def preview_hit_interface(ctx, data_fp, data_idx=None, open_in_browser=False):
-    data = utils.load_input_data(data_fp)
+def preview_hit_interface(ctx, input_data_fp, data_idx=None, open_in_browser=False):
+    data = utils.load_input_data(input_data_fp)
     if data_idx:
         datum = data[data_idx]
     else:
@@ -41,12 +28,12 @@ def preview_hit_interface(ctx, data_fp, data_idx=None, open_in_browser=False):
 
 
 @task(pre=[_setup_task_config])
-def create_hit_group(ctx, data_fp):
-    data = utils.load_input_data(data_fp)
+def create_hit_group(ctx, input_data_fp):
+    data = utils.load_input_data(input_data_fp)
     utils.summarize_proposed_task(data)
-    confirm_action('launch task with these settings? y/n\n')
-    confirm_action(f'create {len(data)} hits? y/n\n')
-    create_hits.create_hit_group(data[:1])
+    # confirm_action('launch task with these settings? y/n\n')
+    # confirm_action(f'create {len(data)} hits? y/n\n')
+    create_hits.create_hit_group(data[:20])
 
 
 @task(pre=[_setup_task_config])
@@ -80,9 +67,11 @@ def approve_hits(ctx, hit_group_fp):
 
 
 @task(pre=[_setup_task_config])
-def get_all_hits(ctx):
+def get_all_hits(ctx, out_file=None):
+    if not out_file:
+        out_file = './all_profile_hits.json'
     all_hits = manage_hits.get_all_hits()
-    utils.serialize_result(all_hits, 'json', './all_profile_hits.json')
+    utils.serialize_result(all_hits, 'json', out_file)
 
 
 @task(pre=[_setup_task_config])
@@ -103,7 +92,14 @@ def force_delete_hits(ctx, hit_group_fp):
     manage_hits.force_delete_hits(hits)
 
 
-# namespace = Collection()
-# namespace.add_collection(Collection.from_module(create_hits))
-# namespace.add_task(test_prev)
-# inner.configure()
+def confirm_action(prompt):
+    while True:
+        confirm = input(prompt)
+        if confirm.lower() in ('y', 'n', 'yes', 'no'):
+            if confirm[0] != 'y':
+                import sys
+                print('aborting...')
+                sys.exit()
+            break
+        else:
+            print("\n Invalid--Please enter y or n.")

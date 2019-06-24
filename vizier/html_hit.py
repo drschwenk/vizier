@@ -1,7 +1,6 @@
 import copy
 import jinja2
 import xmltodict
-from .log import logger
 from .utils import recall_template_args
 from .config import MTURK_DATA_SCHEMA
 from .qualifications import build_qualifications
@@ -22,6 +21,7 @@ def _create_html_hit_params(**kwargs):
 
 
 def _render_hit_html(**kwargs):
+    from .log import logger
     interface_params = kwargs['configuration']['interface_params']
     logger.debug('rendering %s template', interface_params['template_file'])
     missing_args = recall_template_args().difference(set(kwargs.keys()))
@@ -54,5 +54,6 @@ def _create_question_xml(html_question, frame_height, turk_schema='html'):
         xmltodict.parse(hit_xml)
         return hit_xml
     except xmltodict.expat.ExpatError as err:
+        from .log import logger
         logger.error(err)
         raise

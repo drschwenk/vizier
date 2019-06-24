@@ -6,7 +6,6 @@ import pickle
 from decorator import decorator
 from .client_tasks import amt_single_action
 from .config import configure
-from .log import logger
 
 
 @decorator
@@ -78,6 +77,7 @@ def expected_cost(data, **kwargs):
 @decorator
 @configure
 def serialize_action_result(action, *args, **kwargs):
+    from .log import logger
     configs = kwargs['configuration']
     output_format = configs['serialization_params']['output_format']
     output_fp = _prepare_output_path(action, configs)
@@ -117,12 +117,10 @@ def _prepare_output_path(action, configs, include_timestamp=True):
     out_dir = os.path.join(output_dir_base, experiment)
     os.makedirs(out_dir, exist_ok=True)
     action_name = action.__name__ if callable(action) else action
-    environment = 'prod' if configs['amt_client_params']['in_production'] else 'sbox'
-    if include_timestamp:
-        timestamp = _create_timestamp()
-        file_name = '--'.join([environment, timestamp, action_name])
-    else:
-        file_name = '--'.join([environment, action_name])
+    environment = None if configs['amt_client_params']['in_production'] else 'sbx'
+    timestamp = _create_timestamp() if include_timestamp else None
+    out_fn_components = [environment, action_name, timestamp]
+    file_name = '--'.join(list(filter(None, out_fn_components)))
     output_fp = os.path.join(out_dir, file_name)
     return output_fp
 
@@ -205,7 +203,7 @@ def load_input_data(data_fp, compress=False):
 
 
 @configure
-def summarize_proposed_task(data, *args, **kwargs):
+def summarize_proposed_task(data, **kwargs):
     from pprint import pprint
 
     def add_space():
@@ -232,6 +230,6 @@ def summarize_proposed_task(data, *args, **kwargs):
     add_space()
     in_prod = kwargs['configuration']['amt_client_params']['in_production']
     amt_environment = 'production' if in_prod else 'sandbox'
-    print(f'task will launched in {amt_environment.upper()}')
+    print(f'task will be launched in {amt_environment.upper()}')
     add_space()
 
