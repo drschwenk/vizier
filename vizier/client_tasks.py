@@ -7,6 +7,7 @@ import abc
 import boto3
 from decorator import decorator
 from botocore.exceptions import ClientError
+from tqdm import tqdm
 from .config import configure
 
 
@@ -110,7 +111,7 @@ class CreateHits(BotoThreadedOperation):
 
     def run(self):
         responses = [self.amt.perform(self.action, **point)
-                     for point in self._batch]
+                     for point in tqdm(self._batch)]
         self._queue.put(responses)
 
 
@@ -121,7 +122,7 @@ class GetHITs(BotoThreadedOperation):
 
     def run(self):
         hits = []
-        for hit in self._batch:
+        for hit in tqdm(self._batch):
             action_args = {
                 'HITId': hit['HITId'],
             }

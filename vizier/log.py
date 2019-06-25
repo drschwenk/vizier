@@ -22,7 +22,6 @@ def init_logging(log_format='default', **kwargs):
         date_format = '%m/%d %I:%M:%S'
         formatter = logging.Formatter(fmt=log_format, datefmt=date_format)
         log_out_path = _prepare_output_path('log.txt', task_config, include_timestamp=False)
-        print(log_out_path)
         chan = logging.StreamHandler()
         file_handler = logging.FileHandler(log_out_path)
         logger.setLevel(base_logging_level)

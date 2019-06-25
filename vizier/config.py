@@ -119,7 +119,7 @@ def configure(action, record_config=False, *args, **kwargs):
 
 
 def get_by_path(configs, key_path):
-    reduce(operator.getitem, key_path, configs)
+    return reduce(operator.getitem, key_path, configs)
 
 
 def set_by_path(configs, key_path, value):
