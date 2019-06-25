@@ -3,7 +3,7 @@ import io
 import base64
 import json
 import boto3
-from decorator import decorator
+from pprint import pprint
 from .config import configure
 
 
@@ -58,19 +58,34 @@ def _prepare_json_for_s3_upload(obj):
     return io.BytesIO(obj)
 
 
-@decorator
 @configure
-def upload_object(obj_name, obj=None, obj_path=None, **kwargs):
+def list_working_folder(display_meta_data=False, **kwargs):
+    bucket_name, path_prefix, obj_key = build_object_path('', **kwargs)
+    working_folder = list(list_objects(bucket_name, path_prefix, **kwargs))
+    working_folder.sort(key=lambda x: x['LastModified'])
+    for resp in working_folder:
+        del(resp['ETag'], resp['StorageClass'])
+    if display_meta_data:
+        for resp in working_folder:
+            pprint(resp)
+            print()
+    else:
+        for resp in working_folder:
+            print(os.path.split(resp['Key'])[-1])
+
+
+@configure
+def upload_object(obj_fp, obj=None, **kwargs):
     s3_client = _create_s3_client(**kwargs)
+    obj_name = os.path.split(obj_fp)[-1]
     bucket_name, path_prefix, obj_key = build_object_path(obj_name, **kwargs)
     if obj:
         bin_obj_f = _prepare_json_for_s3_upload(obj)
-        s3_client.upload_fileobj(bin_obj_f, bucket_name, obj_key)
-    elif obj_path:
-        obj_fp = os.path.join(obj_path, obj_name)
-        s3_client.upload_file(obj_fp, bucket_name, obj_key)
-    confirm_upload = list(list_objects(bucket_name, path_prefix, **kwargs))
-    return confirm_upload
+        resp = s3_client.upload_fileobj(bin_obj_f, bucket_name, obj_key)
+    else:
+        resp = s3_client.upload_file(obj_fp, bucket_name, obj_key)
+    # confirm_upload = list(list_objects(bucket_name, path_prefix, **kwargs))
+    # return confirm_upload
 
 
 @configure

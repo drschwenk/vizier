@@ -62,8 +62,8 @@ def _load_config_raw(config_fp):
 
 def _dump_configs(action, configs):
     from .utils import _prepare_output_path
-    out_fn = '--'.join([action.__name__, 'config.yml'])
-    out_fp = _prepare_output_path(out_fn, configs)
+    out_fn = '--'.join([action.__name__, 'config'])
+    out_fp = ''.join([_prepare_output_path(out_fn, configs), '.yml'])
     with open(out_fp, 'w') as stream:
         yaml.safe_dump(configs, stream)
 

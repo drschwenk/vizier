@@ -2,13 +2,15 @@ import os
 from .config import configure
 from .config import load_interface_arg_generator
 from .utils import serialize_action_result
+from .utils import confirm_action
+from .utils import summarize_proposed_task
 from .client_tasks import amt_multi_action
 from .client_tasks import amt_single_action
 from .html_hit import _create_html_hit_params
 from .html_hit import _render_hit_html
 
 
-@configure
+@configure(record_config=True)
 @serialize_action_result
 @amt_multi_action
 def create_hit_group(data, **kwargs):
@@ -17,6 +19,9 @@ def create_hit_group(data, **kwargs):
     :param data: task data
     :return: hit objects created
     """
+    summarize_proposed_task(data)
+    confirm_action('launch task with these settings? y/n\n')
+    confirm_action(f'create {len(data)} hits? y/n\n')
     interface_arg_generator = load_interface_arg_generator(**kwargs)
     hit_batch = [_create_html_hit_params(**interface_arg_generator(datum, **kwargs), **kwargs)
                  for datum in data]
@@ -30,6 +35,7 @@ def create_single_hit(datum, **kwargs):
     :param datum: task data
     :return: hit objects created
     """
+    confirm_action('launch single hit? y/n\n')
     interface_arg_generator = load_interface_arg_generator(**kwargs)
     single_hit = _create_html_hit_params(**interface_arg_generator(datum, **kwargs), **kwargs, )
     return 'create_hit', single_hit
@@ -54,4 +60,8 @@ def preview_hit_interface(datum, **kwargs):
     with open(preview_out_file, 'w') as file:
         file.write(hit_html)
     return preview_out_file
+
+
+def preserve_task_input():
+    pass
 

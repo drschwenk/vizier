@@ -2,6 +2,7 @@ from .client_tasks import amt_serial_action
 from .client_tasks import amt_single_action
 from .config import configure
 from .utils import serialize_action_result
+from .utils import confirm_action
 
 
 @configure
@@ -38,6 +39,7 @@ def grant_qualification_to_workers(qualification_id, worker_ids, notify=True):
     :param notify: send notification email to workers
     :return:
     """
+    confirm_action(f'grant {qualification_id} to {len(worker_ids)} workers? y/n\n')
     requests = []
     for w_id in worker_ids:
         requests.append({
@@ -59,6 +61,7 @@ def remove_qualification_from_workers(qualification_id, worker_ids, reason=''):
     :param reason: reason for disqualification to give workers
     :return:
     """
+    confirm_action(f'revoke {qualification_id} for {len(worker_ids)} workers? y/n\n')
     requests = []
     for w_id in worker_ids:
         requests.append({
@@ -79,7 +82,8 @@ def message_workers(worker_ids, subject, message):
     :param message:
     :return: AMT client responses
     """
-    batch_length = 100      # this is the maximum number of workers AMT allows in one notification
+    confirm_action(f'send message to {len(worker_ids)} workers? y/n\n')
+    batch_length = 100  # 100 is the maximum number of workers AMT allows in one notification
     n_workers = len(worker_ids)
     n_batches, rem = divmod(n_workers, batch_length)
     n_batches += bool(rem)
@@ -103,6 +107,8 @@ def send_bonuses(worker_bonus_assignments, amounts, reason):
     :param reason:
     :return:
     """
+    total_cost = sum(amounts.values())
+    confirm_action(f'pay ${round(total_cost, 2)} of bonuses to workers? y/n\n')
     requests = []
     for worker_id, assignments in worker_bonus_assignments.items():
         amount = amounts[worker_id]

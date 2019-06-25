@@ -3,6 +3,7 @@ import json
 import gzip
 import time
 import pickle
+from pprint import pprint
 from decorator import decorator
 from .client_tasks import amt_single_action
 from .config import configure
@@ -116,7 +117,7 @@ def _prepare_output_path(action, configs, include_timestamp=True):
     experiment = configs['experiment_params']['batch_id']
     out_dir = os.path.join(output_dir_base, experiment)
     os.makedirs(out_dir, exist_ok=True)
-    action_name = action.__name__ if callable(action) else action
+    action_name = action.__name__ + '--resp' if callable(action) else action
     environment = None if configs['amt_client_params']['in_production'] else 'sbx'
     timestamp = _create_timestamp() if include_timestamp else None
     out_fn_components = [environment, action_name, timestamp]
@@ -204,7 +205,6 @@ def load_input_data(data_fp, compress=False):
 
 @configure
 def summarize_proposed_task(data, **kwargs):
-    from pprint import pprint
 
     def add_space():
         for i in range(2):
@@ -233,3 +233,15 @@ def summarize_proposed_task(data, **kwargs):
     print(f'task will be launched in {amt_environment.upper()}')
     add_space()
 
+
+def confirm_action(prompt):
+    while True:
+        confirm = input(prompt)
+        if confirm.lower() in ('y', 'n', 'yes', 'no'):
+            if confirm[0] != 'y':
+                import sys
+                print('aborting...')
+                sys.exit()
+            break
+        else:
+            print("\n Invalid--Please enter y or n.")

@@ -1,9 +1,10 @@
 import subprocess
 from invoke import task
+from vizier import config
 from vizier import utils
+from vizier import storage
 from vizier import create_hits
 from vizier import manage_hits
-from vizier import config
 
 
 @task
@@ -30,9 +31,6 @@ def preview_hit_interface(ctx, input_data_fp, data_idx=None, open_in_browser=Fal
 @task(pre=[_setup_task_config])
 def create_hit_group(ctx, input_data_fp):
     data = utils.load_input_data(input_data_fp)
-    utils.summarize_proposed_task(data)
-    # confirm_action('launch task with these settings? y/n\n')
-    # confirm_action(f'create {len(data)} hits? y/n\n')
     create_hits.create_hit_group(data[:20])
 
 
@@ -92,14 +90,11 @@ def force_delete_hits(ctx, hit_group_fp):
     manage_hits.force_delete_hits(hits)
 
 
-def confirm_action(prompt):
-    while True:
-        confirm = input(prompt)
-        if confirm.lower() in ('y', 'n', 'yes', 'no'):
-            if confirm[0] != 'y':
-                import sys
-                print('aborting...')
-                sys.exit()
-            break
-        else:
-            print("\n Invalid--Please enter y or n.")
+@task(pre=[_setup_task_config])
+def upload_to_s3(ctx, file_path):
+    storage.upload_object(file_path)
+
+
+@task(pre=[_setup_task_config])
+def list_working_s3_folder(ctx, display_metadata=False):
+    storage.list_working_folder(display_metadata)

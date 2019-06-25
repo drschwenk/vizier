@@ -43,7 +43,7 @@ def amt_serial_action(action, *args, **kwargs):
     amt_client = MturkClient(**client_config).amt_client()
     action_name, request_batch = action(*args, **kwargs)
     client_action = getattr(amt_client, action_name)
-    resp = [client_action(**req) for req in request_batch]
+    resp = [client_action(**req) for req in tqdm(request_batch)]
     from .log import logger
     logger.info('performed %s %s actions', len(resp), action_name)
     return resp
@@ -137,7 +137,7 @@ class GetAssignments(BotoThreadedOperation):
 
     def run(self):
         assignments = []
-        for hit in self._batch:
+        for hit in tqdm(self._batch):
             action_args = {
                 'HITId': hit['HITId'],
                 'AssignmentStatuses': ['Submitted', 'Approved'],
@@ -157,7 +157,7 @@ class ApproveAssignments(BotoThreadedOperation):
         for hit in self._batch:
             submitted_assignments = [
                 a for a in hit['Assignments'] if a['AssignmentStatus'] == 'Submitted']
-            for assignment in submitted_assignments:
+            for assignment in tqdm(submitted_assignments):
                 action_args = {
                     'AssignmentId': assignment['AssignmentId'],
                     'RequesterFeedback': 'good',
@@ -188,7 +188,7 @@ class ExpireHits(BotoThreadedOperation):
 
     def run(self):
         responses = [self.amt.perform(
-            self.action, HITId=h['HITId'], ExpireAt=self.exp_date) for h in self._batch]
+            self.action, HITId=h['HITId'], ExpireAt=self.exp_date) for h in tqdm(self._batch)]
         self._queue.put(responses)
 
 
@@ -200,5 +200,6 @@ class DeleteHits(BotoThreadedOperation):
     def run(self):
         to_dispose_hits = [h for h in self._batch if h['HITStatus'] != 'Disposed']
         responses = [self.amt.perform(
-            self.action, HITId=h['HITId']) for h in to_dispose_hits]
+            self.action, HITId=h['HITId']) for h in tqdm(to_dispose_hits)]
         self._queue.put(responses)
+

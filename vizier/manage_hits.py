@@ -5,6 +5,7 @@ from .client_tasks import amt_multi_action
 from .config import configure
 from .utils import serialize_action_result
 from .utils import surface_hit_ids
+from .utils import confirm_action
 
 
 @amt_multi_action
@@ -92,7 +93,7 @@ def get_all_hits(**kwargs):
     Retrieves all of the current users HITs.
     This can be slow if a user has accumulated many thousands of HITs
     :return: all user HITs
-    TODO: parallelize this
+    TODO: parallelize this if possible
     """
     from .client_tasks import MturkClient
     client_config = kwargs['configuration']['amt_client_params']
@@ -121,28 +122,28 @@ def expire_hits(hits, **kwargs):
 
 @amt_multi_action
 @surface_hit_ids
-def delete_hits(hits, **kwargs):
+def delete_hits(hits, bypass=False, **kwargs):
     """
     Deletes (permanently removes) _batch
+    :param bypass: bypass confirmation (used when calling from force_delete_hits
     :param hits: _batch to delete
     :return: AMT client responses
     """
+    if not bypass:
+        confirm_action(f'permanently delete {len(hits)} hits? y/n\n')
     return 'DeleteHits', hits
 
 
 @configure
-def force_delete_hits(hits, force=False, **kwargs):
+def force_delete_hits(hits, **kwargs):
     """
     Deletes (permanently removes) hit batch by first expiring them
     :param hits: batch batch to delete
-    :param force: flag to overcome production warning
     :return: AMT client responses
     """
-    in_production = kwargs['configuration']['amt_client_params']['in_production']
-    if not force and in_production:
-        print('Careful with this in production. Override with force=True')
+    confirm_action(f'expire and permanently delete {len(hits)} hits? y/n\n')
     response = expire_hits(hits)
-    response += delete_hits(hits)
+    response += delete_hits(hits, bypass=True)
     return response
 
 
