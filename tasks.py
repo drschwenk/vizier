@@ -35,10 +35,19 @@ def create_hit_group(ctx, input_data_fp):
 
 
 @task(pre=[_setup_task_config])
-def get_hit_statuses(ctx, hit_group_fp):
+def get_hit_statuses(ctx, hit_group_fp, plot=False):
     hits = utils.deserialize_result(hit_group_fp)
     hit_stats = manage_hits.get_hit_statuses(hits)
-    print(hit_stats.value_counts())
+    if plot:
+        hit_stats.value_counts().plot(kind='bar')
+        fig_labels = {
+            'fig_title': 'HIT Statuses',
+            'x_label': '# HITs',
+            'y_label': 'Status',
+        }
+        utils.make_standard_fig(fig_labels)
+    else:
+        print(hit_stats.value_counts())
 
 
 @task(pre=[_setup_task_config])
@@ -70,6 +79,12 @@ def get_all_hits(ctx, out_file=None):
         out_file = './all_profile_hits.json'
     all_hits = manage_hits.get_all_hits()
     utils.serialize_result(all_hits, 'json', out_file)
+
+
+@task(pre=[_setup_task_config])
+def change_hit_review_status(ctx, hit_group_fp, revert=False):
+    hits = utils.deserialize_result(hit_group_fp)
+    manage_hits.change_hit_review_status(hits, revert=revert)
 
 
 @task(pre=[_setup_task_config])

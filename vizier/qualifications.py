@@ -1,11 +1,9 @@
 from decorator import decorator
-from .config import configure
 from .config import MASTER_QUAL_IDS
 
 amt_environment = 'sandbox'
 
 
-@configure
 def build_qualifications(**kwargs):
     """
     builds qualifications for task

@@ -4,8 +4,8 @@ from .config import load_interface_arg_generator
 from .utils import serialize_action_result
 from .utils import confirm_action
 from .utils import summarize_proposed_task
-from .client_tasks import amt_multi_action
-from .client_tasks import amt_single_action
+from .amt_client import amt_multi_action
+from .amt_client import amt_single_action
 from .html_hit import _create_html_hit_params
 from .html_hit import _render_hit_html
 
@@ -41,7 +41,7 @@ def create_single_hit(datum, **kwargs):
     return 'create_hit', single_hit
 
 
-@configure(record_config=True)
+@configure
 def preview_hit_interface(datum, **kwargs):
     """
     :param datum:

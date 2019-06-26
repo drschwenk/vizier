@@ -24,7 +24,7 @@ def _render_hit_html(**kwargs):
     from .log import logger
     interface_params = kwargs['configuration']['interface_params']
     logger.debug('rendering %s template', interface_params['template_file'])
-    missing_args = recall_template_args().difference(set(kwargs.keys()))
+    missing_args = recall_template_args(**kwargs).difference(set(kwargs.keys()))
     if missing_args:
         print(f'{missing_args} are referenced in template but not supplied by template generator')
     env = jinja2.Environment(loader=jinja2.FileSystemLoader(

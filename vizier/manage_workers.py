@@ -1,11 +1,10 @@
-from .client_tasks import amt_serial_action
-from .client_tasks import amt_single_action
+from .amt_client import amt_serial_action
+from .amt_client import amt_single_action
 from .config import configure
 from .utils import serialize_action_result
 from .utils import confirm_action
 
 
-@configure
 @serialize_action_result
 @amt_single_action
 def create_qualification(qualification, **kwargs):
@@ -29,7 +28,6 @@ def create_qualification(qualification, **kwargs):
     return 'create_qualification_type', qualification
 
 
-@configure
 @amt_serial_action
 def grant_qualification_to_workers(qualification_id, worker_ids, notify=True):
     """
@@ -97,7 +95,6 @@ def message_workers(worker_ids, subject, message):
     return 'notify_workers', requests
 
 
-@configure
 @amt_serial_action
 def send_bonuses(worker_bonus_assignments, amounts, reason):
     """

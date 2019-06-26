@@ -5,7 +5,7 @@ import time
 import pickle
 from pprint import pprint
 from decorator import decorator
-from .client_tasks import amt_single_action
+from .amt_client import amt_single_action
 from .config import configure
 
 
@@ -32,7 +32,26 @@ def print_balance():
     print(f'Account balance is: ${balance:.{2}f}')
 
 
-@configure
+def make_standard_fig(fig_labels=None, save=False, outfile='fig.png', label_color='0.25'):
+    import matplotlib.pylab as plt
+    plt.rcParams['grid.linewidth'] = 0
+    plt.rcParams['figure.figsize'] = (16.0, 10.0)
+    if fig_labels:
+        if 'fig_title' in fig_labels:
+            plt.title(fig_labels['fig_title'], fontsize=15, verticalalignment='bottom', color=label_color)
+        if 'y_label' in fig_labels:
+            plt.ylabel(fig_labels['y_label'], fontsize=15, labelpad=10, color=label_color)
+        if 'x_label' in fig_labels:
+            plt.xlabel(fig_labels['x_label'], fontsize=12, labelpad=10, color=label_color)
+    plt.xticks(rotation=45)
+    plt.tick_params(axis='x', which='major', labelsize=10)
+    plt.tick_params(axis='y', which='major', labelsize=10)
+    plt.tight_layout()
+    plt.show()
+    if save:
+        plt.savefig(outfile, bbox_inches='tight')
+
+
 def recall_template_args(**kwargs):
     """
     Collects all of the arguments expected by the interface template

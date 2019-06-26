@@ -13,16 +13,16 @@ from .config import configure
 
 @decorator
 @configure
-def amt_multi_action(action, *args, **kwargs):
+def amt_multi_action(amt_action, *args, **kwargs):
     client_config = kwargs['configuration']['amt_client_params']
     n_threads = client_config['n_threads']
-    action_name, hit_batch = action(*args, **kwargs)
-    action = globals().get(action_name)
+    action_name, hit_batch = amt_action(*args, **kwargs)
+    amt_action = globals().get(action_name)
     hit_batches = [hit_batch[i::n_threads] for i in range(n_threads)]
     threads = []
     res_queue = queue.Queue()
     for batch in hit_batches:
-        thread = action(batch, res_queue, **client_config)
+        thread = amt_action(batch, res_queue, **client_config, **kwargs)
         threads.append(thread)
         thread.start()
     for thread in threads:
@@ -31,8 +31,10 @@ def amt_multi_action(action, *args, **kwargs):
     while not res_queue.empty():
         result_list.append(res_queue.get())
     resp = [item for sub_l in result_list for item in sub_l]
+    resp = list(filter(None, resp))
+    print('\n' * (n_threads - 1))
     from .log import logger
-    logger.info('performed %s %s actions', len(resp), action_name)
+    logger.info('performed %s/%s %s actions', len(resp), len(hit_batch), action_name)
     return resp
 
 
@@ -44,6 +46,8 @@ def amt_serial_action(action, *args, **kwargs):
     action_name, request_batch = action(*args, **kwargs)
     client_action = getattr(amt_client, action_name)
     resp = [client_action(**req) for req in tqdm(request_batch)]
+    resp = list(filter(None, resp))
+    print('\n')
     from .log import logger
     logger.info('performed %s %s actions', len(resp), action_name)
     return resp
@@ -77,15 +81,17 @@ class MturkClient:
             endpoint_url=endpoints[in_production],
         )
 
-    @classmethod
-    def perform(cls, action, **kwargs):
+    def perform(self, action, **kwargs):
+        allowed_exceptions = (
+            ClientError,
+            self.client.exceptions.RequestError,
+        )
         try:
             response = action(**kwargs)
             return response
-        except ClientError as err:
+        except allowed_exceptions as err:
             from .log import logger
-            logger.error(err)
-            raise
+            logger.error('HITId: %s || %s', kwargs.get('HITId', ''), err)
 
     def amt_client(self):
         return self.client
@@ -175,7 +181,7 @@ class UpdateHITsReviewStatus(BotoThreadedOperation):
 
     def run(self):
         responses = [self.amt.perform(
-            self.action, HITId=h['HITId'], Revert=self.revert) for h in self._batch]
+            self.action, HITId=h['HITId'], Revert=self.revert) for h in tqdm(self._batch)]
         self._queue.put(responses)
 
 

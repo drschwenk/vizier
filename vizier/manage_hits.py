@@ -1,7 +1,7 @@
 from collections import defaultdict
 import json
 import xmltodict
-from .client_tasks import amt_multi_action
+from .amt_client import amt_multi_action
 from .config import configure
 from .utils import serialize_action_result
 from .utils import surface_hit_ids
@@ -93,9 +93,8 @@ def get_all_hits(**kwargs):
     Retrieves all of the current users HITs.
     This can be slow if a user has accumulated many thousands of HITs
     :return: all user HITs
-    TODO: parallelize this if possible
     """
-    from .client_tasks import MturkClient
+    from .amt_client import MturkClient
     client_config = kwargs['configuration']['amt_client_params']
     amt_client = MturkClient(**client_config).amt_client()
     paginator = amt_client.get_paginator('list_hits')
@@ -111,6 +110,7 @@ def get_all_hits(**kwargs):
 
 
 @amt_multi_action
+@surface_hit_ids
 def expire_hits(hits, **kwargs):
     """
     Sets hit expiration to a date in the past
@@ -134,7 +134,6 @@ def delete_hits(hits, bypass=False, **kwargs):
     return 'DeleteHits', hits
 
 
-@configure
 def force_delete_hits(hits, **kwargs):
     """
     Deletes (permanently removes) hit batch by first expiring them
@@ -147,28 +146,16 @@ def force_delete_hits(hits, **kwargs):
     return response
 
 
-@configure
 @amt_multi_action
 @surface_hit_ids
-def set_hits_reviewing(hits, **kwargs):
+def change_hit_review_status(hits, **kwargs):
     """
     Sets hit status to reviewing
-    :param hits: _batch to set status of
+    :param hits: hits to set status of
+    :param revert:
     :return: AMT client responses
     """
-    return 'UpdateHITsReviewStatus', hits#,  revert=False
-
-
-@configure
-@amt_multi_action
-@surface_hit_ids
-def revert_hits_reviewable(hits, **kwargs):
-    """
-    Reverts hit reviewing status
-    :param hits: _batch to revert
-    :return: AMT client responses
-    """
-    return 'UpdateHITsReviewStatus', hits#,  revert=True)
+    return 'UpdateHITsReviewStatus', hits
 
 
 @surface_hit_ids
@@ -184,7 +171,6 @@ def get_hit_statuses(hits):
     return pd.Series(statuses)
 
 
-@configure
 @amt_multi_action
 @surface_hit_ids
 def get_updated_hits(hits, **kwargs):
