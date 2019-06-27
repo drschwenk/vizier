@@ -103,9 +103,8 @@ def configure(action, record_config=False, *args, **kwargs):
         configs = kwargs['configuration']
     else:
         if not configuration_yml_fp:
-            print('no configuration file set')
-            import sys
-            sys.exit()
+            print('no configuration file set\n')
+            set_config_file()
         configs = _load_config_raw(configuration_yml_fp)
         _set_defaults(configs)
         _convert_setting_durations(configs)
@@ -118,6 +117,18 @@ def configure(action, record_config=False, *args, **kwargs):
     return action(*args, **kwargs)
 
 
+def set_config_file():
+    import os
+    prompt = 'please specify config file...\n'
+    while True:
+        config_fp = input(prompt)
+        if os.path.exists(config_fp):
+            set_input_file_path(config_fp)
+            break
+        else:
+            print("\n Invalid path--Please enter again")
+
+
 def get_by_path(configs, key_path):
     return reduce(operator.getitem, key_path, configs)
 
@@ -126,9 +137,12 @@ def set_by_path(configs, key_path, value):
     get_by_path(configs, key_path[:-1])[key_path[-1]] = value
 
 
-def load_interface_arg_generator(**kwargs):
+def load_interface_arg_generator(record=False, **kwargs):
     interface_params = kwargs['configuration']['interface_params']
     module_path = interface_params['template_arg_module']
+    if record:
+        from .utils import record_template_generator
+        record_template_generator(module_path, **kwargs)
     module_name = module_path.split('/')[-1].replace('.py', '')
     func_name = interface_params['template_arg_function']
     mod_spec = importlib.util.spec_from_file_location(module_name, module_path)

@@ -210,6 +210,18 @@ def _dump_pickle(dump_object, file_name, compress, compress_level=9):
     return dump_object
 
 
+@serialize_action_result
+def record_input_data(data, **kwargs):
+    return data
+
+
+def record_template_generator(template_gen_fp, **kwargs):
+    import shutil
+    template_gen_fn = 'record--' + os.path.split(template_gen_fp)[-1]
+    record_fp = _prepare_output_path(template_gen_fn, kwargs['configuration']) + '.py'
+    shutil.copy(template_gen_fp, record_fp)
+
+
 def load_input_data(data_fp, compress=False):
     available_deserializers = {
         'json': _load_json,
