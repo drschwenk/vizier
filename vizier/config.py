@@ -60,14 +60,6 @@ def _load_config_raw(config_fp):
     return task_config
 
 
-def _dump_configs(action, configs):
-    from .utils import _prepare_output_path
-    out_fn = '--'.join([action.__name__, 'config'])
-    out_fp = ''.join([_prepare_output_path(out_fn, configs), '.yml'])
-    with open(out_fp, 'w') as stream:
-        yaml.safe_dump(configs, stream)
-
-
 def _set_defaults(raw_settings):
     for setting_cat, settings in raw_settings.items():
         for field, default in DEFAULT_SETTINGS.get(setting_cat, {}).items():
@@ -113,7 +105,8 @@ def configure(action, record_config=False, *args, **kwargs):
                 set_by_path(configs, setting['keys'], setting['value'])
         kwargs.update({'configuration': configs})
     if record_config:
-        _dump_configs(action, configs)
+        from .utils import record_configuration
+        record_configuration(action, configs)
     return action(*args, **kwargs)
 
 

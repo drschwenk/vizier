@@ -136,7 +136,7 @@ def _prepare_output_path(action, configs, include_timestamp=True):
     experiment = configs['experiment_params']['batch_id']
     out_dir = os.path.join(output_dir_base, experiment)
     os.makedirs(out_dir, exist_ok=True)
-    action_name = action.__name__ + '--resp' if callable(action) else action
+    action_name = 'result--' + action.__name__ if callable(action) else action
     environment = None if configs['amt_client_params']['in_production'] else 'sbx'
     timestamp = _create_timestamp() if include_timestamp else None
     out_fn_components = [environment, action_name, timestamp]
@@ -210,18 +210,6 @@ def _dump_pickle(dump_object, file_name, compress, compress_level=9):
     return dump_object
 
 
-@serialize_action_result
-def record_input_data(data, **kwargs):
-    return data
-
-
-def record_template_generator(template_gen_fp, **kwargs):
-    import shutil
-    template_gen_fn = 'record--' + os.path.split(template_gen_fp)[-1]
-    record_fp = _prepare_output_path(template_gen_fn, kwargs['configuration']) + '.py'
-    shutil.copy(template_gen_fp, record_fp)
-
-
 def load_input_data(data_fp, compress=False):
     available_deserializers = {
         'json': _load_json,
@@ -232,6 +220,53 @@ def load_input_data(data_fp, compress=False):
     if not data_loader:
         raise NotImplementedError
     return data_loader(data_fp, compress)
+
+
+def record_input_data(data, **kwargs):
+    configs = kwargs['configuration']
+    output_format = configs['serialization_params']['output_format']
+    output_fp = _prepare_output_path('record--input_data', configs)
+    compress = configs['serialization_params']['compress']
+    serialize_result(data, output_format, output_fp, compress=compress)
+    from .log import logger
+    logger.info('recording HIT creation input data at %s', output_fp)
+    return data
+
+
+def record_template(**kwargs):
+    import shutil
+    interface_params = kwargs['configuration']['interface_params']
+    template_fn = interface_params['template_file']
+    template_dir = interface_params['template_dir']
+    template_fp = os.path.join(template_dir, template_fn)
+    template_fn = 'record--' + template_fn
+    template_fn, f_ext = os.path.splitext(template_fn)
+    output_fp = _prepare_output_path('record--template_generator', kwargs['configuration'])
+    output_fp += f_ext
+    shutil.copy(template_fp, output_fp)
+    from .log import logger
+    logger.info('recording template generator at %s', output_fp)
+
+
+def record_template_generator(template_gen_fp, **kwargs):
+    import shutil
+    template_gen_fn = 'record--' + os.path.split(template_gen_fp)[-1]
+    template_gen_fn, f_ext = os.path.splitext(template_gen_fn)
+    output_fp = _prepare_output_path('record--jinja_template', kwargs['configuration'])
+    output_fp += f_ext
+    shutil.copy(template_gen_fp, output_fp)
+    from .log import logger
+    logger.info('recording HIT template at %s', output_fp)
+
+
+def record_configuration(action, configs):
+    import yaml
+    out_fn = '--'.join(['record', 'config', action.__name__])
+    output_fp = ''.join([_prepare_output_path(out_fn, configs), '.yml'])
+    with open(output_fp, 'w') as stream:
+        yaml.safe_dump(configs, stream)
+    from .log import logger
+    logger.info('recording HIT configuration at %s', output_fp)
 
 
 @configure
