@@ -1,7 +1,16 @@
+# -*- coding: utf-8 -*-
+"""Configuration
+
+Attributes:
+     _MASTER_QUAL_IDS (dict):
+"""
 from decorator import decorator
-from .config import MASTER_QUAL_IDS
 
 amt_environment = 'sandbox'
+_MASTER_QUAL_IDS = {
+    'production': '2F1QJWKUDD8XADTFD2Q0G6UTO95ALH',
+    'sandbox': '2ARFPLSP75KLA8M8DH1HTEQVJT3SY6'
+}
 
 
 def build_qualifications(**kwargs):
@@ -56,8 +65,8 @@ def _min_total_hits_approved(setting):
 
 
 @_check_qual_inclusion
-def _master(setting):
-    master_qual_id = MASTER_QUAL_IDS.get(amt_environment, '')
+def _master(_):
+    master_qual_id = _MASTER_QUAL_IDS.get(amt_environment, '')
     if not master_qual_id:
         return None
     return {

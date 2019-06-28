@@ -1,8 +1,17 @@
-from .amt_client import amt_serial_action
-from .amt_client import amt_single_action
+# -*- coding: utf-8 -*-
+""" Worker Interaction
+
+"""
+
 from .config import configure
-from .utils import serialize_action_result
-from .utils import confirm_action
+from .amt_client import (
+    amt_serial_action,
+    amt_single_action
+)
+from .utils import (
+    confirm_action,
+)
+from .serialize import serialize_action_result
 
 
 @serialize_action_result

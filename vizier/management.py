@@ -1,11 +1,18 @@
+# -*- coding: utf-8 -*-
+"""HIT Management
+
+"""
 from collections import defaultdict
 import json
 import xmltodict
 from .amt_client import amt_multi_action
 from .config import configure
-from .utils import serialize_action_result
-from .utils import surface_hit_ids
-from .utils import confirm_action
+from .utils import (
+    confirm_action,
+
+    surface_hit_ids
+)
+from .serialize import serialize_action_result
 
 
 @amt_multi_action

@@ -1,5 +1,6 @@
-"""
-Various boto wrappers
+# -*- coding: utf-8 -*-
+""" AMT Client Interaction
+
 """
 import queue
 import threading
@@ -208,4 +209,3 @@ class DeleteHits(BotoThreadedOperation):
         responses = [self.amt.perform(
             self.action, HITId=h['HITId']) for h in tqdm(to_dispose_hits)]
         self._queue.put(responses)
-

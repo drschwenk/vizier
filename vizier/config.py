@@ -1,23 +1,23 @@
+# -*- coding: utf-8 -*-
+"""Configuration
+
+Attributes:
+     configuration_yml_fp (str): path to task config yaml file.
+
+     _DEFAULT_SETTINGS (dict):
+"""
 import operator
 from functools import reduce
-import importlib.util
+
 import yaml
 from decorator import decorator
 
 configuration_yml_fp = None
 
-MASTER_QUAL_IDS = {
-    'production': '2F1QJWKUDD8XADTFD2Q0G6UTO95ALH',
-    'sandbox': '2ARFPLSP75KLA8M8DH1HTEQVJT3SY6'
-}
 
-MTURK_DATA_SCHEMA_BASE = 'http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/'
-MTURK_DATA_SCHEMA = {
-    'html': ''.join([MTURK_DATA_SCHEMA_BASE, '2011-11-11/HTMLQuestion.xsd']),
-    'external': ''.join([MTURK_DATA_SCHEMA_BASE, '2006-07-14/ExternalQuestion.xsd'])
-}
 
-DEFAULT_SETTINGS = {
+
+_DEFAULT_SETTINGS = {
     'amt_client_params': {
         'in_production': False,
         'n_threads': 1,
@@ -48,7 +48,24 @@ DEFAULT_SETTINGS = {
 }
 
 
+def set_input_file_path(config_fp):
+    """
+
+    :param config_fp:
+    :return:
+    """
+    global configuration_yml_fp
+    configuration_yml_fp = config_fp
+    print(f'using {configuration_yml_fp} for task configuration')
+    return configuration_yml_fp
+
+
 def _load_config_raw(config_fp):
+    """
+
+    :param config_fp:
+    :return:
+    """
     with open(config_fp, 'r') as stream:
         try:
             task_config = yaml.safe_load(stream)
@@ -61,13 +78,23 @@ def _load_config_raw(config_fp):
 
 
 def _set_defaults(raw_settings):
+    """
+
+    :param raw_settings:
+    :return:
+    """
     for setting_cat, settings in raw_settings.items():
-        for field, default in DEFAULT_SETTINGS.get(setting_cat, {}).items():
+        for field, default in _DEFAULT_SETTINGS.get(setting_cat, {}).items():
             if field not in settings:
                 settings[field] = default
 
 
 def _convert_setting_durations(raw_settings):
+    """
+
+    :param raw_settings:
+    :return:
+    """
     seconds_per_hour = 3600
     to_convert = [
         'AssignmentDurationInHours',
@@ -81,15 +108,16 @@ def _convert_setting_durations(raw_settings):
         raw_hit_params[new_field] = n_hours * seconds_per_hour
 
 
-def set_input_file_path(config_fp):
-    global configuration_yml_fp
-    configuration_yml_fp = config_fp
-    print(f'using {configuration_yml_fp} for task configuration')
-    return configuration_yml_fp
-
-
 @decorator
 def configure(action, record_config=False, *args, **kwargs):
+    """
+
+    :param action:
+    :param record_config:
+    :param args:
+    :param kwargs:
+    :return:
+    """
     override_configs = kwargs.get('override', None)
     if 'configuration' in kwargs and not override_configs:
         configs = kwargs['configuration']
@@ -105,12 +133,15 @@ def configure(action, record_config=False, *args, **kwargs):
                 set_by_path(configs, setting['keys'], setting['value'])
         kwargs.update({'configuration': configs})
     if record_config:
-        from .utils import record_configuration
         record_configuration(action, configs)
     return action(*args, **kwargs)
 
 
 def set_config_file():
+    """
+
+    :return:
+    """
     import os
     prompt = 'please specify config file...\n'
     while True:
@@ -122,23 +153,34 @@ def set_config_file():
             print("\n Invalid path--Please enter again")
 
 
+def record_configuration(action, configs):
+    import yaml
+    from vizier.utils import prepare_output_path
+    out_fn = '--'.join(['record', 'config', action.__name__])
+    output_fp = ''.join([prepare_output_path(out_fn, configs), '.yml'])
+    with open(output_fp, 'w') as stream:
+        yaml.safe_dump(configs, stream)
+
+
 def get_by_path(configs, key_path):
+    """
+
+    :param configs:
+    :param key_path:
+    :return:
+    """
     return reduce(operator.getitem, key_path, configs)
 
 
 def set_by_path(configs, key_path, value):
+    """
+
+    :param configs:
+    :param key_path:
+    :param value:
+    :return:
+    """
     get_by_path(configs, key_path[:-1])[key_path[-1]] = value
 
 
-def load_interface_arg_generator(record=False, **kwargs):
-    interface_params = kwargs['configuration']['interface_params']
-    module_path = interface_params['template_arg_module']
-    if record:
-        from .utils import record_template_generator
-        record_template_generator(module_path, **kwargs)
-    module_name = module_path.split('/')[-1].replace('.py', '')
-    func_name = interface_params['template_arg_function']
-    mod_spec = importlib.util.spec_from_file_location(module_name, module_path)
-    task_spec_func = importlib.util.module_from_spec(mod_spec)
-    mod_spec.loader.exec_module(task_spec_func)
-    return getattr(task_spec_func, func_name)
+

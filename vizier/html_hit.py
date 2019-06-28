@@ -1,26 +1,43 @@
+# -*- coding: utf-8 -*-
+"""HTML HIT Creation
+
+Attributes:
+     _MTURK_DATA_SCHEMA_BASE (str):
+     _MTURK_DATA_SCHEMA (dict):
+"""
 import copy
 import jinja2
 import xmltodict
 from .utils import recall_template_args
-from .config import MTURK_DATA_SCHEMA
 from .qualifications import build_qualifications
 
 
-def _create_html_hit_params(**kwargs):
+_MTURK_DATA_SCHEMA_BASE = 'http://mechanicalturk.amazonaws.com/AWSMechanicalTurkDataSchemas/'
+_MTURK_DATA_SCHEMA = {
+    'html': ''.join([_MTURK_DATA_SCHEMA_BASE, '2011-11-11/HTMLQuestion.xsd']),
+    'external': ''.join([_MTURK_DATA_SCHEMA_BASE, '2006-07-14/ExternalQuestion.xsd'])
+}
+
+
+def create_html_hit_params(**kwargs):
     """
-    creates a HIT for a question with the specified HTML
-    # :param params a dict of the HIT parameters, must contain an "html" parameter
-    # :return the created HIT object
+
+    :return
     """
     hit_params = copy.deepcopy(kwargs['configuration']['hit_params'])
     frame_height = hit_params.pop('frame_height')
-    question_html = _render_hit_html(**kwargs)
+    question_html = render_hit_html(**kwargs)
     hit_params['Question'] = _create_question_xml(question_html, frame_height)
     hit_params['QualificationRequirements'] = build_qualifications(**kwargs['configuration'])
     return hit_params
 
 
-def _render_hit_html(**kwargs):
+def render_hit_html(**kwargs):
+    """
+    Creates Jinja environment and renders template using fields present in
+    kwargs. Performs a check to assure all fields found in the template are provided.
+    :return: HTML that will be used when creating and HTML Question HIT
+    """
     from .log import logger
     interface_params = kwargs['configuration']['interface_params']
     logger.debug('rendering %s template', interface_params['template_file'])
@@ -33,19 +50,19 @@ def _render_hit_html(**kwargs):
     return template.render(**kwargs)
 
 
-def _create_question_xml(html_question, frame_height, turk_schema='html'):
+def _create_question_xml(question_html, frame_height, turk_schema='html'):
     """
-    Embeds question HTML in AMT HTMLQuestion XML
-    :param html_question: task html
-    :param frame_height: height of mturk iframe
-    :param turk_schema: schema type
-    :return:
+    Embeds question HTML in AMT in HTMLQuestion XML schema
+    :param question_html: HTML
+    :param (int) frame_height: height of mturk Iframe
+    :param (str) turk_schema: schema type- must be defined in _MTURK_DATA_SCHEMA
+    :return: xml schema
     """
     hit_xml = f"""\
-        <HTMLQuestion xmlns="{MTURK_DATA_SCHEMA[turk_schema]}">
+        <HTMLQuestion xmlns="{_MTURK_DATA_SCHEMA[turk_schema]}">
             <HTMLContent><![CDATA[
                 <!DOCTYPE html>
-                    {html_question}
+                    {question_html}
                 ]]>
             </HTMLContent>
             <FrameHeight>{frame_height}</FrameHeight>

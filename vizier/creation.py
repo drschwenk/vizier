@@ -1,16 +1,28 @@
+# -*- coding: utf-8 -*-
+"""Creation of HITs
+"""
 import os
-import inspect
-from .config import configure
-from .config import load_interface_arg_generator
-from .utils import serialize_action_result
-from .utils import confirm_action
-from .utils import record_input_data
-from .utils import record_template
-from .utils import summarize_proposed_task
-from .amt_client import amt_multi_action
-from .amt_client import amt_single_action
-from .html_hit import _create_html_hit_params
-from .html_hit import _render_hit_html
+from vizier.config import (
+    configure,
+)
+from vizier.utils import (
+    confirm_action,
+)
+from vizier.cost import summarize_proposed_task
+from vizier.serialize import (
+    load_interface_arg_generator,
+    record_input_data,
+    record_template,
+    serialize_action_result
+)
+from vizier.amt_client import (
+    amt_multi_action,
+    amt_single_action
+)
+from vizier.html_hit import (
+    create_html_hit_params,
+    render_hit_html
+)
 
 
 @configure(record_config=True)
@@ -22,13 +34,15 @@ def create_hits(data, **kwargs):
     :param data: task data
     :return: hit objects created
     """
-    summarize_proposed_task(data)
+    summarize_proposed_task(data, **kwargs)
     confirm_action('launch task with these settings? y/n\n')
     confirm_action(f'create {len(data)} hits? y/n\n')
     record_input_data(data, **kwargs)
     record_template(**kwargs)
+    # from .log import logger
+    # logger.info('recording HIT configuration at %s', output_fp)
     interface_arg_generator = load_interface_arg_generator(record=True, **kwargs)
-    hit_batch = [_create_html_hit_params(**interface_arg_generator(datum, **kwargs), **kwargs)
+    hit_batch = [create_html_hit_params(**interface_arg_generator(datum, **kwargs), **kwargs)
                  for datum in data]
     return 'CreateHits', hit_batch
 
@@ -43,7 +57,7 @@ def create_single_hit(datum, **kwargs):
     """
     confirm_action('launch single hit? y/n\n')
     interface_arg_generator = load_interface_arg_generator(**kwargs)
-    single_hit = _create_html_hit_params(**interface_arg_generator(datum, **kwargs), **kwargs, )
+    single_hit = create_html_hit_params(**interface_arg_generator(datum, **kwargs), **kwargs, )
     return 'create_hit', single_hit
 
 
@@ -60,10 +74,9 @@ def preview_interface(datum, **kwargs):
     preview_dir = task_configs['interface_params']['preview_dir']
     preview_filename = ''.join([task_configs['experiment_params']['batch_id'], '.html'])
     preview_out_file = os.path.join(preview_dir, preview_filename)
-    hit_html = _render_hit_html(**interface_arg_generator(datum, **kwargs), **kwargs)
+    hit_html = render_hit_html(**interface_arg_generator(datum, **kwargs), **kwargs)
     if not os.path.exists(preview_dir):
         os.makedirs(preview_dir)
     with open(preview_out_file, 'w') as file:
         file.write(hit_html)
     return preview_out_file
-
