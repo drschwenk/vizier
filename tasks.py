@@ -59,7 +59,7 @@ def get_hit_status(ctx, hit_group_fp, plot=False):
 
 @task(pre=[_set_config])
 def get_assignments(ctx, hit_group_fp, extract=False):
-    hits = utils.deserialize_result(hit_group_fp)
+    hits = serialize.deserialize_result(hit_group_fp)
     if extract:
         assignment_results = management.get_and_extract_results(hits)
     else:
@@ -70,13 +70,13 @@ def get_assignments(ctx, hit_group_fp, extract=False):
 
 @task(pre=[_set_config])
 def approve_assignments(ctx, assignment_group_fp):
-    assignments = utils.deserialize_result(assignment_group_fp)
+    assignments = serialize.deserialize_result(assignment_group_fp)
     management.approve_assignments(assignments)
 
 
 @task(pre=[_set_config])
 def approve_hits(ctx, hit_group_fp):
-    hits = utils.deserialize_result(hit_group_fp)
+    hits = serialize.deserialize_result(hit_group_fp)
     management.approve_hits(hits)
 
 
@@ -85,18 +85,18 @@ def get_all_hits(ctx, out_file=None):
     if not out_file:
         out_file = './all_profile_hits.json'
     all_hits = management.get_all_hits()
-    utils.serialize_result(all_hits, 'json', out_file)
+    serialize.serialize_result(all_hits, 'json', out_file)
 
 
 @task(pre=[_set_config])
 def change_hit_review_status(ctx, hit_group_fp, revert=False):
-    hits = utils.deserialize_result(hit_group_fp)
+    hits = serialize.deserialize_result(hit_group_fp)
     management.change_hit_review_status(hits, revert=revert)
 
 
 @task(pre=[_set_config])
 def expire_hits(ctx, hit_group_fp):
-    hits = utils.deserialize_result(hit_group_fp)
+    hits = serialize.deserialize_result(hit_group_fp)
     management.expire_hits(hits)
 
 
