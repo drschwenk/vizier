@@ -1,9 +1,16 @@
+# -*- coding: utf-8 -*-
+""" AMT Tasks
+
+"""
 from invoke import task
-from vizier import config
-from vizier import utils
-from vizier import storage
-from vizier import creation
-from vizier import management
+from vizier import (
+    creation,
+    config,
+    management,
+    storage,
+    serialize,
+    utils
+)
 
 
 @task
@@ -16,7 +23,7 @@ def _set_config(ctx):
 
 @task(pre=[_set_config])
 def preview_interface(ctx, input_data_fp, data_idx=None, open_in_browser=False):
-    data = utils.load_input_data(input_data_fp)
+    data = serialize.load_input_data(input_data_fp)
     if data_idx:
         datum = data[data_idx]
     else:
@@ -30,7 +37,7 @@ def preview_interface(ctx, input_data_fp, data_idx=None, open_in_browser=False):
 
 @task(pre=[_set_config])
 def create_hits(ctx, input_data_fp):
-    data = utils.load_input_data(input_data_fp)
+    data = serialize.load_input_data(input_data_fp)
     creation.create_hits(data[:10])
 
 

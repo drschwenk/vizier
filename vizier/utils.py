@@ -38,7 +38,7 @@ def make_standard_fig(fig_labels=None, save=False, outfile='fig.png', label_colo
 def recall_template_args(**kwargs):
     """
     Collects all of the arguments expected by the interface template
-    at HIT creation
+
     : return (set): the expected arguments
     """
     import re
@@ -83,5 +83,4 @@ def confirm_action(prompt):
             break
         else:
             print("\n Invalid--Please enter y or n.")
-
 

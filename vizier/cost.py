@@ -66,7 +66,7 @@ def summarize_proposed_task(data, **kwargs):
         pprint(kwargs['configuration'][param_type])
         add_section_break()
     add_space()
-    expected_cost(data)
+    expected_cost(data, **kwargs)
     add_space()
     print_balance()
     add_space()
