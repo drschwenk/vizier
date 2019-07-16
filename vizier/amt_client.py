@@ -161,16 +161,13 @@ class ApproveAssignments(BotoThreadedOperation):
 
     def run(self):
         responses = []
-        for hit in self._batch:
-            submitted_assignments = [
-                a for a in hit['Assignments'] if a['AssignmentStatus'] == 'Submitted']
-            for assignment in tqdm(submitted_assignments):
-                action_args = {
-                    'AssignmentId': assignment['AssignmentId'],
-                    'RequesterFeedback': 'good',
-                    'OverrideRejection': False
-                }
-                responses.append(self.amt.perform(self.action, **action_args))
+        for assignment in tqdm(self._batch):
+            action_args = {
+                'AssignmentId': assignment['AssignmentId'],
+                'RequesterFeedback': 'good',
+                'OverrideRejection': False
+            }
+            responses.append(self.amt.perform(self.action, **action_args))
         self._queue.put(responses)
 
 

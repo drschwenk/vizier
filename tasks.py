@@ -43,7 +43,7 @@ def create_hits(ctx, input_data_fp):
 
 @task(pre=[_set_config])
 def get_hit_status(ctx, hit_group_fp, plot=False):
-    hits = utils.deserialize_result(hit_group_fp)
+    hits = serialize.deserialize_result(hit_group_fp)
     hit_stats = management.get_hit_statuses(hits)
     if plot:
         hit_stats.value_counts().plot(kind='bar')
@@ -102,13 +102,13 @@ def expire_hits(ctx, hit_group_fp):
 
 @task(pre=[_set_config])
 def delete_hits(ctx, hit_group_fp):
-    hits = utils.deserialize_result(hit_group_fp)
+    hits = serialize.deserialize_result(hit_group_fp)
     management.delete_hits(hits)
 
 
 @task(pre=[_set_config])
 def force_delete_hits(ctx, hit_group_fp):
-    hits = utils.deserialize_result(hit_group_fp)
+    hits = serialize.deserialize_result(hit_group_fp)
     management.force_delete_hits(hits)
 
 

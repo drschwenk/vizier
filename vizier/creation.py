@@ -35,8 +35,7 @@ def create_hits(data, **kwargs):
     :return: hit objects created
     """
     summarize_proposed_task(data, **kwargs)
-    confirm_action('launch task with these settings? y/n\n')
-    confirm_action(f'create {len(data)} hits? y/n\n')
+    confirm_action(f'create {len(data)} hits with these settings? y/n\n')
     record_input_data(data, **kwargs)
     record_template(**kwargs)
     # from .log import logger
