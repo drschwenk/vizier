@@ -9,7 +9,8 @@ from vizier import (
     management,
     storage,
     serialize,
-    utils
+    workers,
+    viz
 )
 
 
@@ -46,13 +47,7 @@ def get_hit_status(ctx, hit_group_fp, plot=False):
     hits = serialize.deserialize_result(hit_group_fp)
     hit_stats = management.get_hit_statuses(hits)
     if plot:
-        hit_stats.value_counts().plot(kind='bar')
-        fig_labels = {
-            'fig_title': 'HIT Statuses',
-            'x_label': '# HITs',
-            'y_label': 'Status',
-        }
-        utils.make_standard_fig(fig_labels)
+        viz.hit_status_counts(hit_stats)
     else:
         print(hit_stats.value_counts())
 
@@ -118,5 +113,31 @@ def upload_to_s3(ctx, file_path):
 
 
 @task(pre=[_set_config])
-def list_working_s3_folder(ctx, display_metadata=False):
+def list_working_s3_folder(ctx, display_metadata=False, **kwargs):
     storage.list_working_folder(display_metadata)
+
+
+@task(pre=[_set_config])
+def compute_worker_avg_rates(ctx, hit_group_fp=None, plot=False, target_rate=10):
+    if hit_group_fp:
+        hits = serialize.deserialize_result(hit_group_fp)
+    else:
+        hits = management.get_all_hits()
+    avg_rates = workers.compute_worker_avg_rates(hits)
+    out_stats = {
+        'mean': avg_rates.mean().round(2),
+        'median': avg_rates.median().round(2),
+        'std_dev': avg_rates.std().round(2),
+        'min': avg_rates.min().round(2),
+        'max': avg_rates.max().round(2)
+    }
+    out_message = [stat + ': $' + str(val) for stat, val in out_stats.items()]
+    print('-'.join([''] * 100))
+    print('Estimated effective worker rates:')
+    print(', '.join(out_message))
+    print('-'.join([''] * 100))
+
+    if plot:
+        viz.worker_rate_hist(avg_rates, target_rate)
+    else:
+        print(avg_rates)

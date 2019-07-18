@@ -15,30 +15,9 @@ def surface_hit_ids(action, *args, **kwargs):
     return action_name, hits
 
 
-def make_standard_fig(fig_labels=None, save=False, outfile='fig.png', label_color='0.25'):
-    import matplotlib.pylab as plt
-    plt.rcParams['grid.linewidth'] = 0
-    plt.rcParams['figure.figsize'] = (16.0, 10.0)
-    if fig_labels:
-        if 'fig_title' in fig_labels:
-            plt.title(fig_labels['fig_title'], fontsize=15, verticalalignment='bottom', color=label_color)
-        if 'y_label' in fig_labels:
-            plt.ylabel(fig_labels['y_label'], fontsize=15, labelpad=10, color=label_color)
-        if 'x_label' in fig_labels:
-            plt.xlabel(fig_labels['x_label'], fontsize=12, labelpad=10, color=label_color)
-    plt.xticks(rotation=45)
-    plt.tick_params(axis='x', which='major', labelsize=10)
-    plt.tick_params(axis='y', which='major', labelsize=10)
-    plt.tight_layout()
-    plt.show()
-    if save:
-        plt.savefig(outfile, bbox_inches='tight')
-
-
 def recall_template_args(**kwargs):
     """
     Collects all of the arguments expected by the interface template
-
     : return (set): the expected arguments
     """
     import re
@@ -84,3 +63,9 @@ def confirm_action(prompt):
         else:
             print("\n Invalid--Please enter y or n.")
 
+
+def filter_outliers(df, filter_on):
+    first_quart, third_quart = df[filter_on].quantile([0.25, 0.75])
+    iqr_1p5 = (third_quart - first_quart) * 1.5
+    lower_thresh, upper_thresh = first_quart - iqr_1p5, third_quart + iqr_1p5
+    return df[(lower_thresh < df[filter_on]) & (df[filter_on] < upper_thresh)]
