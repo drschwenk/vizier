@@ -118,7 +118,7 @@ def list_working_s3_folder(ctx, display_metadata=False, **kwargs):
 
 
 @task(pre=[_set_config])
-def compute_worker_avg_rates(ctx, hit_group_fp=None, plot=False, target_rate=10):
+def compute_worker_avg_rates(ctx, hit_group_fp=None, plot=False, target_rate=10.0):
     if hit_group_fp:
         hits = serialize.deserialize_result(hit_group_fp)
     else:
@@ -136,7 +136,6 @@ def compute_worker_avg_rates(ctx, hit_group_fp=None, plot=False, target_rate=10)
     print('Estimated effective worker rates:')
     print(', '.join(out_message))
     print('-'.join([''] * 100))
-
     if plot:
         viz.worker_rate_hist(avg_rates, target_rate)
     else:
