@@ -19,16 +19,20 @@ _MTURK_DATA_SCHEMA = {
 }
 
 
+def create_hit_params(**kwargs):
+    hit_params = copy.deepcopy(kwargs['configuration']['hit_params'])
+    frame_height = hit_params.pop('frame_height', '')
+    hit_params['QualificationRequirements'] = build_qualifications(**kwargs['configuration'])
+    return hit_params, frame_height
+
+
 def create_html_hit_params(**kwargs):
     """
-
     :return
     """
-    hit_params = copy.deepcopy(kwargs['configuration']['hit_params'])
-    frame_height = hit_params.pop('frame_height')
+    hit_params, frame_height = create_hit_params(**kwargs)
     question_html = render_hit_html(**kwargs)
     hit_params['Question'] = _create_question_xml(question_html, frame_height)
-    hit_params['QualificationRequirements'] = build_qualifications(**kwargs['configuration'])
     return hit_params
 
 

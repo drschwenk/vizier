@@ -40,7 +40,7 @@ def worker_rate_hist(avg_rates, target_rate=10):
         'x_label': 'Hourly rate (USD)',
         'y_label': '# Workers',
     }
-    bins = np.arange(0, 22)
+    bins = np.arange(0, avg_rates.max())
     avg_rates.plot(kind='hist', bins=bins)
     center_bin_labels(bins, fontsize=20)
     plt.axvline(x=target_rate + 0.5, color='r', linewidth=3, linestyle='--')

@@ -43,6 +43,11 @@ def create_hits(ctx, input_data_fp):
 
 
 @task(pre=[_set_config])
+def create_hit_type(ctx):
+    creation.create_hit_type()
+
+
+@task(pre=[_set_config])
 def get_hit_status(ctx, hit_group_fp, plot=False):
     hits = serialize.deserialize_result(hit_group_fp)
     hit_stats = management.get_hit_statuses(hits)
