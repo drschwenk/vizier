@@ -132,22 +132,26 @@ def send_bonuses(worker_bonus_assignments, amounts, reason):
 
 def build_reward_lookup(hits):
     return {h.get('HIT', h)['HITId']: float(h.get('HIT', h)['Reward']) for h in hits}
-    # if 'HIT' in hits[0]:
-    #     return {h['HIT']['HITId']: float(h['HIT']['Reward']) for h in hits}
-    # else:
-    #     return {h['HITId']: float(h['Reward']) for h in hits}
 
 
-def compute_worker_avg_rates(hits, min_worker_time_hrs=1):
+def build_worker_df(assignments, reward_lookup, min_worker_time_hrs=1):
     import pandas as pd
-    reward_lookup = build_reward_lookup(hits)
-    assignments = get_assignments(hits)
     metadata_df = pd.DataFrame(assignments)
+    for field in ['AcceptTime', 'SubmitTime']:
+        if metadata_df[field].dtype.name == 'object':
+            metadata_df[field] = pd.to_datetime(metadata_df[field])
     metadata_df['task_duration_hrs'] = (metadata_df.SubmitTime - metadata_df.AcceptTime).apply(lambda x: x.seconds / 3600)
     metadata_df = filter_outliers(metadata_df, 'task_duration_hrs')
     metadata_df['reward'] = metadata_df['HITId'].apply(lambda x: reward_lookup[x])
     worker_df = metadata_df.groupby('WorkerId').sum()
     worker_df = worker_df[worker_df['task_duration_hrs'] >= min_worker_time_hrs]
-    worker_avg_hourly_rates = worker_df.reward / worker_df.task_duration_hrs
+    return worker_df
+
+
+def compute_worker_avg_rates(hits, min_worker_time_hrs=1):
+    reward_lookup = build_reward_lookup(hits)
+    assignments = get_assignments(hits)
+    worker_df = build_worker_df(assignments, reward_lookup, min_worker_time_hrs)
+    worker_avg_hourly_rates = workeir_df.reward / worker_df.task_duration_hrs
     return worker_avg_hourly_rates
 

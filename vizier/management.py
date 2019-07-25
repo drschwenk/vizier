@@ -9,7 +9,6 @@ from .amt_client import amt_multi_action
 from .config import configure
 from .utils import (
     confirm_action,
-
     surface_hit_ids
 )
 from .serialize import serialize_action_result
@@ -112,6 +111,7 @@ def get_all_hits(**kwargs):
     )
     response = []
     for resp in response_iterator:
+        print('Getting next 100 hits')
         response.extend(resp['HITs'])
     return response
 

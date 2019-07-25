@@ -21,6 +21,7 @@ from vizier.amt_client import (
 )
 from vizier.html_hit import (
     create_html_hit_params,
+    create_hit_params,
     render_hit_html
 )
 
@@ -40,13 +41,13 @@ def create_hits(data, **kwargs):
     record_template(**kwargs)
     # from .log import logger
     # logger.info('recording HIT configuration at %s', output_fp)
-    interface_arg_generator = load_interface_arg_generator(record=True, **kwargs)
-    hit_batch = [create_html_hit_params(**interface_arg_generator(datum, **kwargs), **kwargs)
-                 for datum in data]
+    arg_gen = load_interface_arg_generator(record=True, **kwargs)
+    hit_batch = [create_html_hit_params(**arg_gen(datum, **kwargs), **kwargs) for datum in data]
     return 'CreateHits', hit_batch
 
 
 @configure(record_config=True)
+@serialize_action_result
 @amt_single_action
 def create_single_hit(datum, **kwargs):
     """
@@ -58,6 +59,24 @@ def create_single_hit(datum, **kwargs):
     interface_arg_generator = load_interface_arg_generator(**kwargs)
     single_hit = create_html_hit_params(**interface_arg_generator(datum, **kwargs), **kwargs, )
     return 'create_hit', single_hit
+
+
+@configure(record_config=True)
+@serialize_action_result
+@amt_single_action
+def create_hit_type(**kwargs):
+    generic_type_params = [
+        'AutoApprovalDelayInSeconds',
+        'AssignmentDurationInSeconds',
+        'Reward',
+        'Title',
+        'Keywords',
+        'Description',
+        'QualificationRequirements'
+    ]
+    hit_params, _ = create_hit_params(**kwargs)
+    hit_type_params = {param: val for param, val in hit_params.items() if param in generic_type_params}
+    return 'create_hit_type', hit_type_params
 
 
 @configure
