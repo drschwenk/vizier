@@ -10,9 +10,9 @@ Attributes:
 """
 import logging
 # from .utils import prepare_output_path
-import vizier.utils as utils
+import crowdsourcery.utils as utils
 # from .config import configure
-import vizier.config as config
+import crowdsourcery.config as config
 
 LOG_LEVELS = {
     'debug': logging.DEBUG,

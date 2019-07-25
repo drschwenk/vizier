@@ -2,24 +2,24 @@
 """Creation of HITs
 """
 import os
-from vizier.config import (
+from crowdsourcery.config import (
     configure,
 )
-from vizier.utils import (
+from crowdsourcery.utils import (
     confirm_action,
 )
-from vizier.cost import summarize_proposed_task
-from vizier.serialize import (
+from crowdsourcery.cost import summarize_proposed_task
+from crowdsourcery.serialize import (
     load_interface_arg_generator,
     record_input_data,
     record_template,
     serialize_action_result
 )
-from vizier.amt_client import (
+from crowdsourcery.amt_client import (
     amt_multi_action,
     amt_single_action
 )
-from vizier.html_hit import (
+from crowdsourcery.html_hit import (
     create_html_hit_params,
     create_hit_params,
     render_hit_html

@@ -155,7 +155,7 @@ def set_config_file():
 
 def record_configuration(action, configs):
     import yaml
-    from vizier.utils import prepare_output_path
+    from crowdsourcery.utils import prepare_output_path
     out_fn = '--'.join(['record', 'config', action.__name__])
     output_fp = ''.join([prepare_output_path(out_fn, configs), '.yml'])
     with open(output_fp, 'w') as stream:

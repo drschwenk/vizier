@@ -3,7 +3,7 @@
 
 """
 from invoke import task
-from vizier import (
+from crowdsourcery import (
     creation,
     config,
     management,
@@ -18,7 +18,7 @@ from vizier import (
 def _set_config(ctx):
     config_file = ctx.get('task_config_fp', None)
     config_fp_used = config.set_input_file_path(config_file)
-    from vizier.log import logger
+    from crowdsourcery.log import logger
     logger.debug('using %s for task configuration', config_fp_used)
 
 

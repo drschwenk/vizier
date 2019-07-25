@@ -1,5 +1,5 @@
 from pprint import pprint
-from vizier.amt_client import amt_single_action
+from crowdsourcery.amt_client import amt_single_action
 
 
 @amt_single_action
